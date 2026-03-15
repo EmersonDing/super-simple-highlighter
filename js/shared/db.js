@@ -488,8 +488,15 @@ class DB {
    * @memberof DB
    */
   getMatchingSum(match) {
-    return this.queryDB(DB.VIEW_NAME.SUM, { key: match }).then(({rows}) => {
-      return rows.length === 0 ? 0 : rows[0].value
+    return this.getDB().then(db => db.allDocs({ include_docs: true })).then(({rows}) => {
+      let sum = 0
+      for (const row of rows) {
+        const doc = row.doc
+        if (!doc || doc.match !== match) continue
+        if (doc.verb === DB.DOCUMENT.VERB.CREATE) sum += 1
+        else if (doc.verb === DB.DOCUMENT.VERB.DELETE) sum -= 1
+      }
+      return sum
     })
   }
 
@@ -500,11 +507,17 @@ class DB {
    * @memberof DB
    */
   getSums() {
-    return this.queryDB(DB.VIEW_NAME.SUM, {
-      group: true,
-      group_level: 1,
-      include_docs: false
-    }).then(({rows}) => { return rows })
+    return this.getDB().then(db => db.allDocs({ include_docs: true })).then(({rows}) => {
+      const sums = new Map()
+      for (const row of rows) {
+        const doc = row.doc
+        if (!doc || !doc.match) continue
+        const current = sums.get(doc.match) || 0
+        if (doc.verb === DB.DOCUMENT.VERB.CREATE) sums.set(doc.match, current + 1)
+        else if (doc.verb === DB.DOCUMENT.VERB.DELETE) sums.set(doc.match, current - 1)
+      }
+      return Array.from(sums, ([key, value]) => ({ key, value }))
+    })
   }
 
   //
@@ -528,21 +541,17 @@ class DB {
     verbs=undefined,
     excludeDeletedDocs=false,
   } = {}) {
-    // query options
-    const qo = {
-      startkey: !descending ? [match] : [match, {}],
-      endkey: !descending ? [match, {}] : [match],
-      descending: descending,
-      include_docs: true,
-    }
+    return this.getDB().then(db => db.allDocs({ include_docs: true })).then(({rows}) => {
+      // Filter to matching docs, sort by date
+      let docs = rows
+        .map(r => r.doc)
+        .filter(doc => doc && doc.match === match)
+        .sort((a, b) => descending ? (b.date - a.date) : (a.date - b.date))
 
-    // limit number of results
-    if (typeof limit === 'number') {
-      qo.limit = limit
-    }
-
-    return this.queryDB(DB.VIEW_NAME.MATCH_DATE, qo).then(({rows}) => {
-      let docs = rows.map(r => r.doc)
+      // Apply limit
+      if (typeof limit === 'number') {
+        docs = docs.slice(0, limit)
+      }
 
       // if true, remove all `create` documents for which a corresponding `delete` document exists.
       if (excludeDeletedDocs) {
