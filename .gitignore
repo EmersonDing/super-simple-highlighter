@@ -6,3 +6,7 @@ __MACOSX/
 # gemini /setup-github
 .gemini/
 gha-creds-*.json
+
+.claude/
+node_modules/
+test-results/

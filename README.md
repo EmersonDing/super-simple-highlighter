@@ -1,36 +1,39 @@
-# Super Simple Highlighter
-Copyright 2014-2017 [Dexterous Logic](http://dexterouslogic.com)
+# Super Simple Highlighter (Fork)
 
-## What is it?
-A Chrome extension for highlighting text, and automatically attempt to restore highlight on each page revisit.
+This is a fork of [Super Simple Highlighter](https://github.com/nicholasgasior/super-simple-highlighter) by [Dexterous Logic](http://dexterouslogic.com) (Copyright 2014-2017).
+
+A Chrome extension for highlighting text on web pages, with automatic restoration of highlights on each page revisit.
+
+## Changes in this fork
+
+- **Manifest V3 migration**: Upgraded from MV2 to MV3 (service worker, `chrome.scripting` API, etc.)
+- **PING rejection fix**: Content script injection now handles rejected PING messages correctly, allowing the inject-then-retry flow to work
+- **PouchDB MV3 CSP fix**: Replaced `db.query()` (map/reduce) with `db.allDocs()` + in-memory filtering to avoid `Function()` calls blocked by MV3's strict Content Security Policy
+- **E2E tests**: Added Playwright-based end-to-end tests for highlight creation and persistence
 
 ## Installation
-Use the prepackaged version in the [app store](https://chrome.google.com/webstore/detail/super-simple-highlighter/hhlhjgianpocpoppaiihmlpgcoehlhio).
 
-## Donate
-Donations can be made with [Paypal](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TXVYJTNXQKPCY) or [Amazon Wishlist](http://www.amazon.co.uk/registry/wishlist/2JZNJ3B74GUUU)
+Load as an unpacked extension in Chrome:
 
-## Licenses
+1. Navigate to `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked" and select this directory
 
-### Highlighter Blue Icon
-[Highlighter Blue Icon](http://www.iconarchive.com/show/soft-scraps-icons-by-hopstarter/Highlighter-Blue-icon.html) by [Hopstarter](http://hopstarter.deviantart.com) is licensed under [CC BY-NC-ND 3.0](http://creativecommons.org/licenses/by-nc-nd/3.0/)
+## Testing
 
-### Exclamation Icon
-[Exclamation Icon](https://www.iconfinder.com/icons/32453/alert_attention_danger_error_exclamation_hanger_message_problem_warning_icon) by [Aha-soft](http://www.aha-soft.com/) is licensed under [CC BY 3.0](http://creativecommons.org/licenses/by/3.0/)
+```bash
+npm install
+npx playwright install chromium
+npx playwright test
+```
 
-    Super Simple Highlighter
-    Copyright (C) 2014-2017 Dexterous Logic
-    
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-    
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-    
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+## License
+
+This project is licensed under the **GNU General Public License v3.0** (or later), the same license as the original project. See [LICENSE](LICENSE) for the full text.
+
+The original license and copyright notices have been preserved in full.
+
+### Third-party assets
+
+- [Highlighter Blue Icon](http://www.iconarchive.com/show/soft-scraps-icons-by-hopstarter/Highlighter-Blue-icon.html) by [Hopstarter](http://hopstarter.deviantart.com) — [CC BY-NC-ND 3.0](http://creativecommons.org/licenses/by-nc-nd/3.0/)
+- [Exclamation Icon](https://www.iconfinder.com/icons/32453/alert_attention_danger_error_exclamation_hanger_message_problem_warning_icon) by [Aha-soft](http://www.aha-soft.com/) — [CC BY 3.0](http://creativecommons.org/licenses/by/3.0/)

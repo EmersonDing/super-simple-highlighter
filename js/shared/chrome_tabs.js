@@ -247,7 +247,7 @@ class ChromeTabs {
    */
   sendMessage(id, message = {}, { ping = true } = {}) {
     return (ping ? 
-      this._sendMessage({ id: ChromeTabs.MESSAGE_ID.PING}) :
+      this._sendMessage({ id: ChromeTabs.MESSAGE_ID.PING}).catch(() => false) :
       Promise.resolve(true)
     ).then(pong => {
       if (!pong) {
