@@ -2,3 +2,7 @@
 *~
 __MACOSX/
 /.vscode
+
+# gemini /setup-github
+.gemini/
+gha-creds-*.json
