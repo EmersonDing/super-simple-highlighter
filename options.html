@@ -302,6 +302,30 @@
 						<!-- List group -->
 						<ul class="list-group">
 							<li class="list-group-item">
+								<h5>{{ 'advanced_storage_title' | i18n }}</h5>
+								<p>{{ 'advanced_storage_description' | i18n }}</p>
+								<div class="progress" style="margin-bottom: 5px;">
+									<div class="progress-bar" role="progressbar"
+										ng-style="{'width': storagePercent + '%'}"
+										aria-valuenow="{{storagePercent}}" aria-valuemin="0" aria-valuemax="100">
+									</div>
+								</div>
+								<p><strong>{{storageUsed}}</strong></p>
+							</li>
+
+							<li class="list-group-item">
+								<h5>{{ 'advanced_optimize_title' | i18n }}</h5>
+								<p>{{ 'advanced_optimize_description' | i18n }}</p>
+								<div class="row-buttons">
+									<button type="button" class="btn btn-default" data-ng-click="onClickOptimize()"
+										data-ng-disabled="optimizing">
+										{{ optimizing ? ('advanced_optimize_running_text' | i18n) : ('advanced_optimize_button_text' | i18n) }}
+									</button>
+								</div>
+								<p class="text-danger" data-ng-show="optimizeError">{{optimizeError}}</p>
+							</li>
+
+							<li class="list-group-item">
 								<h5>{{ 'advanced_database_export_title' | i18n }}</h5>
 								<p>{{ 'advanced_database_export_description' | i18n }}</p>
 

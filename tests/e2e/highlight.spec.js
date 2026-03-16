@@ -54,6 +54,29 @@ test.afterAll(async () => {
   if (server) server.close()
 })
 
+test('options page advanced tab displays database storage size', async () => {
+  // Get extension ID from service worker URL
+  const extId = sw.url().split('/')[2]
+  const optionsUrl = `chrome-extension://${extId}/options.html`
+
+  const page = await context.newPage()
+  await page.goto(optionsUrl)
+  await page.waitForLoadState('domcontentloaded')
+
+  // Click the Advanced tab
+  await page.click('a[href="#advanced"]')
+
+  // Wait for Angular to render the storage display with a formatted size (e.g. "1.2 MB used", "345.0 KB used")
+  const storageText = page.locator('#advanced .list-group-item strong')
+  await expect(storageText.first()).toHaveText(/[\d.]+ (B|KB|MB|GB) used/, { timeout: 5000 })
+
+  // Verify progress bar exists (width may be near-zero for small databases)
+  const progressBar = page.locator('#advanced .progress-bar')
+  await expect(progressBar).toBeAttached()
+
+  await page.close()
+})
+
 test('highlight creates mark elements and persists after reload', async () => {
   const pageUrl = `http://127.0.0.1:${port}/test-page.html`
   const page = await context.newPage()

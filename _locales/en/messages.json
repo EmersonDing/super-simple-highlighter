@@ -331,5 +331,37 @@
   },
   "highlights_page_title_prefix": {
     "message": "Highlights"
+  },
+  "advanced_storage_title": {
+    "message": "Storage"
+  },
+  "advanced_storage_description": {
+    "message": "Amount of storage used by the extension. This includes the highlights database and may not necessarily reflect the number of highlights."
+  },
+  "advanced_storage_usage_label": {
+    "message": "$size$ used",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "advanced_optimize_title": {
+    "message": "Optimize Database"
+  },
+  "advanced_optimize_description": {
+    "message": "Cleans up the highlights database and ensures it is operating as quickly as possible. This is especially useful after you've removed a large number of highlights. This may take a very long time."
+  },
+  "advanced_optimize_button_text": {
+    "message": "Compact & Optimize…"
+  },
+  "advanced_optimize_running_text": {
+    "message": "Optimizing…"
+  },
+  "advanced_storage_unavailable": {
+    "message": "Storage info unavailable"
+  },
+  "advanced_optimize_error": {
+    "message": "Optimization failed. Please try again."
   }
 }

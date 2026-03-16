@@ -28,6 +28,7 @@ angular.module('advancedControllers', []).controller('advanced', ["$scope", func
 
 			for (const func of [
 				this.onClickExport,
+				this.onClickOptimize,
 				this.onFilesChange
 			]) {
 				this.scope[func.name] = func.bind(this)
@@ -35,6 +36,56 @@ angular.module('advancedControllers', []).controller('advanced', ["$scope", func
 
 			// TODO: move this to html
 			document.querySelector('#files').addEventListener('change', this.onFilesChange)
+
+			this.scope.optimizing = false
+			this.updateStorageEstimate()
+		}
+
+		/**
+		 * Format bytes into a human-readable string
+		 *
+		 * @param {number} bytes
+		 * @returns {string}
+		 */
+		static formatBytes(bytes) {
+			if (bytes < 1024) return `${bytes} B`
+			if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+			if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+			return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+		}
+
+		/**
+		 * Fetch storage estimate and update scope
+		 */
+		updateStorageEstimate() {
+			navigator.storage.estimate().then(({usage, quota}) => {
+				this.scope.storageUsed = chrome.i18n.getMessage(
+					"advanced_storage_usage_label", [Controller.formatBytes(usage)]
+				)
+				this.scope.storagePercent = quota > 0 ? Math.min((usage / quota) * 100, 100).toFixed(2) : 0
+				this.scope.$apply()
+			}).catch(() => {
+				this.scope.storageUsed = chrome.i18n.getMessage("advanced_storage_unavailable")
+				this.scope.storagePercent = 0
+				this.scope.$apply()
+			})
+		}
+
+		/**
+		 * Handle click on Compact & Optimize button
+		 */
+		onClickOptimize() {
+			this.scope.optimizing = true
+			this.scope.optimizeError = null
+
+			new DB().optimizeDB().then(() => {
+				this.updateStorageEstimate()
+			}).catch(() => {
+				this.scope.optimizeError = chrome.i18n.getMessage("advanced_optimize_error")
+			}).finally(() => {
+				this.scope.optimizing = false
+				this.scope.$apply()
+			})
 		}
 
     /**
