@@ -336,7 +336,7 @@
     "message": "Storage"
   },
   "advanced_storage_description": {
-    "message": "Amount of storage used by the highlights database. This may not necessarily reflect the number of highlights."
+    "message": "Amount of storage used by the extension. This includes the highlights database and may not necessarily reflect the number of highlights."
   },
   "advanced_storage_usage_label": {
     "message": "$size$ used",
@@ -357,5 +357,11 @@
   },
   "advanced_optimize_running_text": {
     "message": "Optimizing…"
+  },
+  "advanced_storage_unavailable": {
+    "message": "Storage info unavailable"
+  },
+  "advanced_optimize_error": {
+    "message": "Optimization failed. Please try again."
   }
 }

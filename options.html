@@ -322,6 +322,7 @@
 										{{ optimizing ? ('advanced_optimize_running_text' | i18n) : ('advanced_optimize_button_text' | i18n) }}
 									</button>
 								</div>
+								<p class="text-danger" data-ng-show="optimizeError">{{optimizeError}}</p>
 							</li>
 
 							<li class="list-group-item">
