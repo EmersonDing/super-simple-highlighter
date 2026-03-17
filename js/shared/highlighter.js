@@ -38,10 +38,12 @@ class Highlighter {
   * @param {string} match - match string to identify related highlights. Usually processed from url
   * @param {string} text - text of highlight
   * @param {string} className - class name identifying highlight style to apply to DOM element, and in database also
+  * @param {Object} [options={}] - optional parameters
+  * @param {string} [options.comment] - optional comment to attach to the highlight
   * @returns {Promise}
   * @memberof Highlighter
   */
-  create(xrange, match, text, className) {
+  create(xrange, match, text, className, { comment } = {}) {
     if (xrange.collapsed) {
       return Promise.reject(new Error("Collapsed range"))
     }
@@ -70,6 +72,10 @@ class Highlighter {
       const optional = {}
       if (tab && tab.title !== tab.url) {
         optional.title = tab.title
+      }
+
+      if (typeof comment === 'string') {
+        optional.comment = comment
       }
 
       return db.putCreateDocument(match, xrange, className, text, optional)
