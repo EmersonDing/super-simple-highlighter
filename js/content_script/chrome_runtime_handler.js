@@ -224,6 +224,7 @@ class ChromeRuntimeHandler {
    * @param {string} firstHighlightId - #id to add to first mark
    * @param {string} className - class name (aka highlight definiton id) to add to every mark
    * @param {number} [version=4] - version used to create highlight. If <= 3 it implies it's a recreation, and assume compat behaviour
+   * @param {string} [comment] - optional comment text; sets data-comment and appends dot indicator
    * @returns {HTMLElement[]} - mark elements - can be empty
    * @memberof ChromeRuntimeHandler
    */
@@ -288,8 +289,7 @@ class ChromeRuntimeHandler {
 
     const result = new Marker(this.document).update(highlightId, newClassName, whitelist)
 
-    // Re-apply data-comment — Marker.update() modifies classList on existing elements
-    // without replacing them, so dataset.comment is already preserved naturally.
+    // dataset.comment is preserved: Marker.update() modifies classList in-place without replacing elements.
 
     return result
   }
