@@ -19,58 +19,173 @@ When a user selects text on any web page, a small floating toolbar appears above
 | File | Purpose |
 |------|---------|
 | `js/content_script/selection_toolbar.js` | `SelectionToolbar` class — selection detection, toolbar DOM lifecycle, comment input state |
-| `css/selection_toolbar.css` | Toolbar styles, injected as content script CSS |
+
+No separate CSS file. Toolbar styles are injected by `SelectionToolbar.init()` as a `<style>` element appended to `document.head`. This is fully self-contained and requires no manifest changes or `StyleSheetManager` involvement.
 
 ### Modified Files
 
 | File | Change |
 |------|--------|
-| `js/content_script/main.js` | Instantiate and init `SelectionToolbar` |
-| `js/shared/db.js` | Add optional `comment` field to `putCreateDocument()` and `updateCreateDocument()` |
-| `js/content_script/chrome_runtime_handler.js` | Pass `comment` value through `createHighlight()`, set `data-comment` attribute on first `<mark>` element |
-| `js/content_script/dom_events_handler.js` | On hover, read `data-comment` from mark element and show tooltip if present |
-| `manifest.json` | Register `css/selection_toolbar.css` as content script CSS |
+| `js/shared/chrome_tabs.js` | (1) Add `selection_toolbar.js` to `DEFAULT_SCRIPTS` before `main.js`. (2) Add `SET_HIGHLIGHT_COMMENT` to `ChromeTabs.MESSAGE_ID`. (3) Add `ChromeTabs.setHighlightComment(highlightId, comment)` instance method. (4) Extend `createHighlight()` to forward `comment` inside the `sendMessage` payload object (not as a positional argument — `options` remains the fifth positional param). (5) Extend `playbackDocuments()` to read `doc[DB.DOCUMENT.NAME.COMMENT]` and pass it in the `createHighlight()` message payload. |
+| `js/background/chrome_runtime_handler.js` | Add `CREATE_HIGHLIGHT_FROM_PAGE` and `UPDATE_HIGHLIGHT_COMMENT` to `ChromeRuntimeHandler.MESSAGE`. Add handler cases in `onMessage` for both (both async). Use `sender.tab.id` and `sender.tab.url` — not `queryActiveTab()`. |
+| `js/content_script/chrome_runtime_handler.js` | (1) Add `CREATE_HIGHLIGHT_FROM_PAGE` and `UPDATE_HIGHLIGHT_COMMENT` to `ChromeRuntimeHandler.MESSAGE_ID`. (2) Add `SET_HIGHLIGHT_COMMENT` case to `onMessage` switch. (3) Extend `createHighlight()` to accept `comment`, set `data-comment` on first `<mark>`, and append the dot indicator. (4) After `updateHighlight()`, re-apply `data-comment` if the mark element had it. |
+| `js/shared/db.js` | Add `COMMENT: 'comment'` to `DB.DOCUMENT.NAME`. Extend `putCreateDocument()` and `updateCreateDocument()` to accept optional `comment`. Fix `updateCreateDocument()` early-return guard to include `comment` in the no-op check. |
+| `js/content_script/main.js` | Instantiate and init `SelectionToolbar`. |
+| `js/content_script/dom_events_handler.js` | On hover over a `<mark>` element, if `data-comment` is set, show tooltip appended to `document.body`. On `mouseleave`, remove the tooltip. |
 
-### Message Flow
+---
+
+## Message Reference
+
+> **Note:** Two separate classes are both named `ChromeRuntimeHandler` — one in the background, one in the content script. This section disambiguates all message constants by file path.
+
+### Content Script → Background (new)
+
+These message IDs originate in the content script and are handled by the background.
+
+```js
+// js/content_script/chrome_runtime_handler.js — ChromeRuntimeHandler.MESSAGE_ID
+// (messages sent FROM content script TO background)
+ChromeRuntimeHandler.MESSAGE_ID = {
+  DELETE_HIGHLIGHT:           'delete_highlight',          // existing
+  CREATE_HIGHLIGHT_FROM_PAGE: 'create_highlight_from_page', // new
+  UPDATE_HIGHLIGHT_COMMENT:   'update_highlight_comment',   // new
+}
+
+// js/background/chrome_runtime_handler.js — ChromeRuntimeHandler.MESSAGE
+// (string constants the background's onMessage switch matches against)
+ChromeRuntimeHandler.MESSAGE = {
+  DELETE_HIGHLIGHT:           'delete_highlight',          // existing
+  CREATE_HIGHLIGHT_FROM_PAGE: 'create_highlight_from_page', // new
+  UPDATE_HIGHLIGHT_COMMENT:   'update_highlight_comment',   // new
+}
+```
+
+### Background → Content Script (new)
+
+```js
+// js/shared/chrome_tabs.js — ChromeTabs.MESSAGE_ID
+// (messages sent FROM background TO content script via tabs.sendMessage)
+ChromeTabs.MESSAGE_ID = {
+  ...existing...,
+  SET_HIGHLIGHT_COMMENT: 'set_highlight_comment',  // new
+}
+```
+
+---
+
+## Message Flow
+
+### Creating a Highlight (pen button)
+
+`SelectionToolbar` serializes the current `Selection` using `RangeUtils.toObject()` (available via `js/shared/utils.js` in `DEFAULT_SCRIPTS`). It reads `selection.toString()` for the text. Both are sent to the background.
 
 ```
 SelectionToolbar (content script)
-  │
-  ├─ pen click ──────────────────────────────────────────────────────┐
-  │                                                                   ▼
-  └─ comment save ──► chrome.runtime.sendMessage(CREATE_HIGHLIGHT)  background
-                         {id, range, highlightId, className,         │
-                          comment (optional)}                         ▼
-                                                               db.putCreateDocument(
-                                                                 ..., {comment})
+  └─ uses content ChromeRuntimeHandler.sendMessage({
+       id: ChromeRuntimeHandler.MESSAGE_ID.CREATE_HIGHLIGHT_FROM_PAGE,
+       xrange: RangeUtils.toObject(selection.getRangeAt(0)),
+       text:   selection.toString(),
+       className: activeClassName
+     })
+       └─► js/background/chrome_runtime_handler.js  onMessage(msg, sender)
+             match = DB.formatMatch(sender.tab.url)   // NOT queryActiveTab()
+             └─► new Highlighter(sender.tab.id).create(msg.xrange, match, msg.text, msg.className)
+                   ├─► db.putCreateDocument(match, xrange, className, text, {title})
+                   └─► new ChromeTabs(sender.tab.id).createHighlight(xrange, className, docId, version)
+                         └─► content ChromeRuntimeHandler.onMessage (CREATE_HIGHLIGHT case)
+                               └─► createHighlight(range, highlightId, className, version)
 ```
 
-The background's existing `CREATE_HIGHLIGHT` handler is extended to accept an optional `comment` field and pass it to `db.putCreateDocument()`. No new message type is needed for creation.
+### Creating a Highlight + Comment (comment save)
 
-For updating a comment on an existing highlight, a new `UPDATE_HIGHLIGHT_COMMENT` message routes through background to `db.updateCreateDocument(id, {comment})`.
+Same as above, `comment` added to the message and threaded through:
+
+```
+SelectionToolbar
+  └─ content ChromeRuntimeHandler.sendMessage({
+       id: ..CREATE_HIGHLIGHT_FROM_PAGE,
+       xrange, text, className,
+       comment: <string>
+     })
+       └─► background onMessage
+             └─► new Highlighter(sender.tab.id).create(xrange, match, text, className, { comment })
+                   ├─► db.putCreateDocument(match, xrange, className, text, { title, comment })
+                   └─► new ChromeTabs(id).createHighlight(xrange, className, docId, version)
+                         // comment forwarded in sendMessage payload, not as a positional arg
+                         └─► content createHighlight(..., comment)
+                               ├─► sets data-comment on first <mark>
+                               └─► appends dot indicator child (data-foreign set)
+```
+
+`Highlighter.create()` gains an optional fifth argument `{ comment } = {}`, which it passes into `db.putCreateDocument()` and then forwards in the `ChromeTabs.createHighlight()` call.
+
+### Updating a Comment
+
+```
+SelectionToolbar
+  └─ content ChromeRuntimeHandler.sendMessage({
+       id: ..UPDATE_HIGHLIGHT_COMMENT,
+       highlightId: <string>,
+       comment: <string>   // empty string = clear comment
+     })
+       └─► background onMessage  [asynchronous = true]
+             ├─► db.updateCreateDocument(highlightId, { comment })
+             └─► new ChromeTabs(sender.tab.id).setHighlightComment(highlightId, comment)
+                   └─► content ChromeRuntimeHandler.onMessage (SET_HIGHLIGHT_COMMENT case)
+                         └─► update data-comment on first <mark>
+                               └─► add/remove dot indicator child accordingly
+```
+
+Both `CREATE_HIGHLIGHT_FROM_PAGE` and `UPDATE_HIGHLIGHT_COMMENT` background handlers are **asynchronous**: they set `asynchronous = true`, return `true` from `onMessage`, and call `sendResponse` inside `.then()/.catch()` — identical to the existing `DELETE_HIGHLIGHT` handler pattern.
+
+### Comment Restoration on Page Reload
+
+`ChromeTabs.playbackDocuments()` is extended to read `doc[DB.DOCUMENT.NAME.COMMENT]` and forward it in the `sendMessage` payload inside `createHighlight()`. The updated call in `playbackDocuments()` is:
+
+```js
+return this.createHighlight(
+  doc[DB.DOCUMENT.NAME.RANGE],
+  doc[DB.DOCUMENT.NAME.CLASS_NAME],
+  doc._id,
+  version,
+  // options param — comment travels inside message payload via createHighlight() internals
+)
+// createHighlight() internally adds comment to the sendMessage payload
+```
+
+This ensures `data-comment` and the dot indicator are restored on every page revisit, not only at initial creation.
 
 ---
 
 ## Data Model
 
-The existing PouchDB `create` document gains one optional field:
-
 ```js
+// New field in 'create' documents:
 {
   verb: 'create',
-  match: 'https://example.com/article',
-  range: { ... },        // XPath range
-  className: 'default-yellow-...',
-  text: 'lazy dog near the river bank',
-  comment: 'This is interesting because...',  // NEW — optional string
-  date: 1710000000000,
+  match: '...',
+  range: { ... },
+  className: '...',
+  text: '...',
+  comment: 'Optional annotation text.',  // NEW — optional string, max 1000 chars
+  date: ...,
   v: 4
 }
 ```
 
 `DB.DOCUMENT.NAME` gains: `COMMENT: 'comment'`
 
-`updateCreateDocument()` is extended to accept `comment` alongside `className` and `title`.
+`updateCreateDocument()` accepts `comment` in the values object alongside `className` and `title`. Two implementation details:
+
+1. The early-return no-op guard is updated to include `comment` in its comparison, so that passing an empty string (clearing a comment) always reaches `putDB`.
+2. The conditional assignment for `comment` inside the method must use `typeof comment === 'string'` (not `if (comment)`) so that an empty string correctly clears an existing comment rather than being skipped as falsy. This matches the pattern already used for `title` in `putCreateDocument()`.
+
+---
+
+## Active Style Resolution
+
+`SelectionToolbar` calls `new ChromeHighlightStorage().getAll()` on init and caches the first entry in `highlightDefinitions` as `activeClassName`. On each toolbar show, `getAll()` is called again to pick up any style changes; during the async resolution, the **cached value from init** is used as a fallback so the pen button is never disabled waiting for the refresh. The refreshed value is applied before the next toolbar show.
 
 ---
 
@@ -79,43 +194,74 @@ The existing PouchDB `create` document gains one optional field:
 ### Toolbar States
 
 **State 1 — Text selected:**
-A compact dark pill toolbar appears centered above the selection with a caret pointing down to the text. Contains:
-- Pen button (colored with active highlight style background)
+A compact dark pill (`.ssh-toolbar-root`) appears `position: fixed`, centered above the selection, with a downward caret. Contains:
+- Pen button — background color matches active highlight style
 - Vertical divider
 - Chat bubble button (neutral)
 
 **State 2 — Comment mode (after chat bubble click):**
-The text is immediately highlighted. The toolbar expands in-place to show:
+Text is immediately highlighted. Toolbar expands in-place:
 - Chat bubble icon
 - Vertical divider
-- Auto-focused text input (`placeholder: "Add a comment…"`)
-- Save button (disabled until ≥1 non-whitespace character)
+- Auto-focused `<input>` (`placeholder="Add a comment…"`, `maxlength="1000"`)
+- Save `<button>` — disabled until ≥ 1 non-whitespace character
 - × close button
 
-Pressing Enter or clicking Save commits the comment. × dismisses the input; the highlight remains but without a comment.
+`selectionchange` dismissal listener is **removed** when transitioning to State 2 (clicking the input collapses the selection). It is reinstated when State 2 is exited.
+
+Enter or Save → commits comment, closes toolbar. × → discards input, highlight stays.
 
 **State 3 — Hover on commented highlight:**
-A blue dot (8px, border: 1.5px white) appears at the top-right of the first `<mark>` element. On hover, a dark tooltip appears above the highlight showing the comment text. Implemented in `DOMEventsHandler` by reading `data-comment` from the mark element.
+A blue dot (8px, `border: 1.5px solid white`, `data-foreign` set) is appended to the first `<mark>` as an absolutely-positioned child.
+
+On `mouseenter`, a tooltip `<div>` is appended to `document.body` (`position: fixed`) and positioned using `mark.getBoundingClientRect()`. Text is set via `element.textContent` (never `innerHTML`). On `mouseleave`, the tooltip is removed from `document.body`.
+
+The dot indicator and `data-comment` are set inside content script `createHighlight()` — applied on both initial creation and `playbackDocuments()` replay.
 
 ### Toolbar Positioning
 
-- Positioned using `Selection.getRangeAt(0).getBoundingClientRect()` + `window.scrollX/Y`
-- Centered horizontally above the selection
-- Falls back to bottom-of-selection if insufficient space above (< 60px from viewport top)
-- `position: fixed` to avoid scroll drift
+- `position: fixed` — coordinates from raw `getBoundingClientRect()`, **no** `window.scrollX/Y` offset
+- Centered: `left = rect.left + rect.width / 2 − toolbarWidth / 2`
+- If fewer than 60px from viewport top, flip below selection
+
+### CSS Isolation
+
+`SelectionToolbar.init()` injects a `<style>` element with all toolbar CSS. All classes use the `ssh-toolbar-` prefix. The root element uses `all: initial` to prevent page style inheritance.
+
+### Error Handling
+
+`SelectionToolbar` uses the existing static `ChromeRuntimeHandler.sendMessage()` helper. On rejection (e.g. inactive service worker), the toolbar is silently dismissed and no highlight is created.
 
 ### Dismissal
 
-The toolbar is removed when:
-- User clicks outside it (captured `mousedown` listener, removed after first trigger)
-- Selection collapses (via `selectionchange` event)
-- Page navigates
+Toolbar is removed when:
+- User clicks outside it (one-time `mousedown` capture listener on `document`)
+- Selection collapses via `selectionchange` (**only in State 1** — suppressed in State 2)
+- Page scrolls (`scroll` on `window`, `{ passive: true }`)
 
 ---
 
-## CSS Isolation
+## `DEFAULT_SCRIPTS` Load Order
 
-All toolbar elements use the class prefix `ssh-toolbar-` and rely on inline styles for critical layout properties. The stylesheet uses `all: initial` on the root element to prevent page style inheritance. This mirrors the approach used by existing close buttons, which work correctly across arbitrary sites without Shadow DOM.
+`selection_toolbar.js` is inserted in `ChromeTabs.DEFAULT_SCRIPTS` **immediately before** `js/content_script/main.js`:
+
+```js
+ChromeTabs.DEFAULT_SCRIPTS = [
+  "js/shared/chrome_tabs.js",
+  "js/shared/chrome_storage.js",
+  "js/shared/chrome_highlight_storage.js",
+  "js/shared/utils.js",
+  "js/shared/style_sheet_manager.js",
+  "js/content_script/marker.js",
+  "js/content_script/dom_events_handler.js",
+  "js/content_script/chrome_storage_handler.js",
+  "js/content_script/chrome_runtime_handler.js",
+  "js/content_script/selection_toolbar.js",   // NEW
+  "js/content_script/main.js",
+]
+```
+
+All dependencies (`ChromeHighlightStorage`, `RangeUtils`, `ChromeRuntimeHandler`) are declared earlier in the list.
 
 ---
 
@@ -124,11 +270,18 @@ All toolbar elements use the class prefix `ssh-toolbar-` and rely on inline styl
 | Scenario | Behavior |
 |----------|---------|
 | Click outside toolbar | Toolbar dismissed, no highlight created |
-| Empty comment submitted | Save button disabled; no action |
+| Empty/whitespace comment | Save disabled; no action |
 | Comment cancelled (×) | Highlight stays, no comment stored |
-| Selection inside existing highlight | New highlight created over selection (existing behavior) |
-| Multi-element selection | `Marker.mark()` handles; no special casing needed |
-| Page scroll while toolbar open | Toolbar dismissed (selectionchange fires) |
+| Comment > 1000 chars | `maxlength` prevents input beyond limit |
+| Selection inside existing highlight | New highlight created (existing behavior) |
+| Multi-element selection | `Marker.mark()` handles; no change needed |
+| Page scrolls while toolbar open | `scroll` listener dismisses toolbar |
+| Input focused (State 2) + selection collapses | `selectionchange` suppressed; toolbar stays |
+| `Marker.update()` called after comment set | Attributes on existing elements are preserved; `updateHighlight()` explicitly re-reads and re-applies `data-comment` as a safeguard |
+| `UPDATE_HIGHLIGHT_COMMENT` sent | Background updates DB, sends `SET_HIGHLIGHT_COMMENT` to content script to sync DOM |
+| Page reload with commented highlight | `playbackDocuments()` forwards `doc.comment`; dot and tooltip restored |
+| Highlight deleted | `[data-foreign]` cleanup removes dot; tooltip removed on `mouseleave` |
+| Service worker inactive | `sendMessage` rejects; toolbar dismissed silently |
 
 ---
 
@@ -138,13 +291,16 @@ New Playwright test file: `tests/selection-toolbar.spec.js`
 
 ### Test Cases
 
-1. Select text → toolbar appears above selection
+1. Select text → toolbar appears above selection (`position: fixed`, viewport-relative)
 2. Click pen → highlight created with active style, toolbar dismissed
-3. Click comment → toolbar expands, type text, press Enter → highlight created with comment, blue dot visible
-4. Hover commented highlight → tooltip shows correct comment text
+3. Click comment → toolbar expands, type text, press Enter → highlight + comment created, blue dot visible
+4. Hover commented highlight → tooltip shows correct text (from `data-comment`)
 5. Click × in comment mode → highlight stays, no comment in DB
 6. Click outside toolbar → toolbar dismissed, no highlight created
-7. Save button disabled when comment input is empty
+7. Save button disabled for empty/whitespace-only input
+8. Page scroll while toolbar open → toolbar dismissed
+9. Page reload with commented highlight → dot and tooltip restored
+10. Re-open comment input on existing commented highlight, edit text, save → `UPDATE_HIGHLIGHT_COMMENT` fires, `data-comment` updated in DOM, tooltip shows new text
 
 ### Regression
 
