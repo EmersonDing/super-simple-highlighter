@@ -234,7 +234,8 @@ class StyleSheetManager {
 
 StyleSheetManager.CLASS_NAME = {
   // close button added to each mark element
-  CLOSE: 'ssh-close'
+  CLOSE: 'ssh-close',
+  COMMENT_DOT: 'ssh-comment-dot',
 }
 
 StyleSheetManager.DECLARATIONS = {

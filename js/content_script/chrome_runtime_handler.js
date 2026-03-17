@@ -90,7 +90,7 @@ class ChromeRuntimeHandler {
             return false
           }
 
-          const elms = this.createHighlight(range, highlightId, className, version)
+          const elms = this.createHighlight(range, highlightId, className, version, message.comment)
           return elms.length > 0
         })(message.range, message.highlightId, message.className, message.version || 4)
         break
@@ -178,6 +178,29 @@ class ChromeRuntimeHandler {
         response = this.getHoveredHighlightID()
         break
 
+      case ChromeTabs.MESSAGE_ID.SET_HIGHLIGHT_COMMENT: {
+        const elm = this.document.getElementById(message.highlightId)
+        if (!elm) break
+
+        if (typeof message.comment === 'string' && message.comment.length > 0) {
+          elm.dataset.comment = message.comment
+          // Add dot if not already present
+          if (!elm.querySelector(`.${StyleSheetManager.CLASS_NAME.COMMENT_DOT}`)) {
+            const dot = this.document.createElement('span')
+            dot.classList.add(StyleSheetManager.CLASS_NAME.COMMENT_DOT)
+            dot.dataset[ChromeRuntimeHandler.DATA_ATTRIBUTE_NAME.FOREIGN] = ''
+            elm.appendChild(dot)
+          }
+        } else {
+          // Clear comment
+          delete elm.dataset.comment
+          const dot = elm.querySelector(`.${StyleSheetManager.CLASS_NAME.COMMENT_DOT}`)
+          if (dot) dot.remove()
+        }
+        response = true
+        break
+      }
+
       default:
         console.error(`Unhandled message`, message)
         break
@@ -204,7 +227,7 @@ class ChromeRuntimeHandler {
    * @returns {HTMLElement[]} - mark elements - can be empty
    * @memberof ChromeRuntimeHandler
    */
-  createHighlight(range, firstHighlightId, className, version = 4) {
+  createHighlight(range, firstHighlightId, className, version = 4, comment) {
     // new highlights use 'mark' tag
     const tagName = version <= 3 ? 'span' : 'mark'
 
@@ -231,6 +254,17 @@ class ChromeRuntimeHandler {
     elms[0].setAttribute('tabindex', '0')
     // firstSpan.classList.add("closeable");
 
+    // Set comment data and dot indicator
+    if (typeof comment === 'string' && comment.length > 0) {
+      elms[0].dataset.comment = comment
+
+      // Dot indicator — removed by removeHighlight() via [data-foreign] cleanup
+      const dot = this.document.createElement('span')
+      dot.classList.add(StyleSheetManager.CLASS_NAME.COMMENT_DOT)
+      dot.dataset[ChromeRuntimeHandler.DATA_ATTRIBUTE_NAME.FOREIGN] = ''
+      elms[0].appendChild(dot)
+    }
+
     if (version <= 3) {
       // to be compatible with recreated highlights from v3, a dummy 'close' button is needed
       elms[0].appendChild(document.createElement("span"));
@@ -252,7 +286,12 @@ class ChromeRuntimeHandler {
     // don't remove these classes
     const whitelist = [this.styleSheetManager.sharedHighlightClassName]
 
-    return new Marker(this.document).update(highlightId, newClassName, whitelist)
+    const result = new Marker(this.document).update(highlightId, newClassName, whitelist)
+
+    // Re-apply data-comment — Marker.update() modifies classList on existing elements
+    // without replacing them, so dataset.comment is already preserved naturally.
+
+    return result
   }
 
   /**
@@ -467,6 +506,8 @@ class ChromeRuntimeHandler {
 // id for messages sent TO background page
 ChromeRuntimeHandler.MESSAGE_ID = {
   DELETE_HIGHLIGHT: 'delete_highlight',
+  CREATE_HIGHLIGHT_FROM_PAGE: 'create_highlight_from_page',
+  UPDATE_HIGHLIGHT_COMMENT: 'update_highlight_comment',
 }
 
 ChromeRuntimeHandler.DATA_ATTRIBUTE_NAME = {
