@@ -77,6 +77,7 @@ angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", fu
         this.onClickRemoveHighlight,
         this.onClickRemoveAllHighlights,
         this.onClickRemoveAllBookmarks,
+        this.onClickSaveAsMarkdown,
       ]) {
 				this.scope[func.name] = func.bind(this)
       }
@@ -107,18 +108,22 @@ angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", fu
       const db = new DB()
 
       // build default options object
-      return new ChromeStorage().get([
-        ChromeStorage.KEYS.OPTIONS.BOOKMARKS_GROUP_BY,
-        ChromeStorage.KEYS.OPTIONS.BOOKMARKS_ASCENDING_ORDER,
-        ChromeStorage.KEYS.OPTIONS.BOOKMARKS_SHOW_PAGE_TEXT,
-      ]).then(items => {
+      return Promise.all([
+        new ChromeStorage().get([
+          ChromeStorage.KEYS.OPTIONS.BOOKMARKS_GROUP_BY,
+          ChromeStorage.KEYS.OPTIONS.BOOKMARKS_ASCENDING_ORDER,
+          ChromeStorage.KEYS.OPTIONS.BOOKMARKS_SHOW_PAGE_TEXT,
+        ]),
+        new ChromeHighlightStorage().getAll()
+      ]).then(([items, highlightStorage]) => {
         // initialize options of scope
         this.scope.options = {
             groupBy: items[ChromeStorage.KEYS.OPTIONS.BOOKMARKS_GROUP_BY],
             ascendingOrder: items[ChromeStorage.KEYS.OPTIONS.BOOKMARKS_ASCENDING_ORDER],
             showPageText: items[ChromeStorage.KEYS.OPTIONS.BOOKMARKS_SHOW_PAGE_TEXT], 
         }
-        
+        this.scope.highlightDefinitionTitles = new Map((highlightStorage[ChromeHighlightStorage.KEYS.HIGHLIGHT_DEFINITIONS] || []).map(def => [def.className, def.title]))
+
         // get an array of each unique match, and the number of associated documents (which is of no use)
         return db.getSums()
       }).then(rows => {
@@ -492,6 +497,63 @@ angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", fu
      * @returns {Promise}
      * @memberof Controller
      */
+
+    /**
+     * Save the current pages list as a markdown file.
+     *
+     * @returns {void}
+     */
+    onClickSaveAsMarkdown() {
+      if (!this.ungroupedDocs.length) {
+        return
+      }
+
+      const titleLookup = this.scope.highlightDefinitionTitles || new Map()
+      const docs = this.scope.groupedDocs
+        .reduce((allDocs, group) => allDocs.concat(group.docs), [])
+        .filter(doc => this.scope.filters.document(doc))
+
+      let markdown = '# Saved Highlights'
+
+      for (const doc of docs) {
+        markdown += `\n\n## [${doc.title || doc.match}](${doc.match})`
+
+        if (doc.title && doc.title !== doc.match) {
+          markdown += `\n\nLink: ${doc.match}`
+        }
+
+        if (doc.texts.length === 0) {
+          markdown += '\n\n_No highlights saved on this page._'
+          continue
+        }
+
+        let currentClassName
+
+        for (const textItem of doc.texts) {
+          if (textItem.className !== currentClassName) {
+            currentClassName = textItem.className
+            markdown += `\n\n### ${titleLookup.get(textItem.className) || textItem.className}`
+          }
+
+          markdown += `\n- ${textItem.text || ''}`
+
+          if (textItem.comment) {
+            markdown += `\n  - Note: ${textItem.comment}`
+          }
+        }
+      }
+
+      const anchorElm = document.createElement('a')
+      const utf8ToBase64 = str => window.btoa(unescape(encodeURIComponent(str)))
+
+      anchorElm.download = chrome.i18n.getMessage('save_overview_file_name')
+      anchorElm.href = `data:text/markdown;base64,${utf8ToBase64(markdown)}`
+
+      const clickEvent = document.createEvent('MouseEvent')
+      clickEvent.initMouseEvent('click', true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+      anchorElm.dispatchEvent(clickEvent)
+    }
+
     onClickRemoveAllBookmarks() {
       if (!window.confirm(chrome.i18n.getMessage("confirm_remove_all_pages"))) {
         return Promise.resolve()
