@@ -4,12 +4,23 @@ This is a fork of [Super Simple Highlighter](https://github.com/nicholasgasior/s
 
 A Chrome extension for highlighting text on web pages, with automatic restoration of highlights on each page revisit.
 
+## Selection toolbar
+
+When you select text on a page, the extension shows a floating toolbar for quick actions:
+
+- **Google search**: Open a new tab to search Google for the selected text
+- **Highlight**: Save the selection with your active highlight color
+- **Comment & highlight**: Create a highlight and attach a comment to it for later review
+
+![Selection toolbar screenshot](resources/selection-toolbar.png)
+
 ## Changes in this fork
 
 - **Manifest V3 migration**: Upgraded from MV2 to MV3 (service worker, `chrome.scripting` API, etc.)
 - **PING rejection fix**: Content script injection now handles rejected PING messages correctly, allowing the inject-then-retry flow to work
 - **PouchDB MV3 CSP fix**: Replaced `db.query()` (map/reduce) with `db.allDocs()` + in-memory filtering to avoid `Function()` calls blocked by MV3's strict Content Security Policy
 - **E2E tests**: Added Playwright-based end-to-end tests for highlight creation and persistence
+- **Selection toolbar**: Added quick actions for Google search, highlight creation, and highlight comments
 
 ## Installation
 
