@@ -15,6 +15,8 @@
  * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+const COMMENT_DOT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 32 32" fill="none"><rect x="3" y="2" width="26" height="21" rx="7" fill="#3a3a3c"/><path d="M10 23 L9 30 L18 23" fill="#3a3a3c"/></svg>`
+
 /**
  * Handlers for chrome.runtime events
  * 
@@ -184,29 +186,41 @@ class ChromeRuntimeHandler {
 
         if (typeof message.comment === 'string' && message.comment.length > 0) {
           elm.dataset.comment = message.comment
+
+          // Find the last mark element of this highlight so the dot appears at the end
+          let lastElm = elm
+          while (
+            lastElm.nextElementSibling &&
+            lastElm.nextElementSibling.classList.contains(this.styleSheetManager.sharedHighlightClassName)
+          ) {
+            lastElm = lastElm.nextElementSibling
+          }
+
           // Add icon if not already present
-          if (!elm.querySelector(`.${StyleSheetManager.CLASS_NAME.COMMENT_DOT}`)) {
+          if (!lastElm.querySelector(`.${StyleSheetManager.CLASS_NAME.COMMENT_DOT}`)) {
             const dot = this.document.createElement('span')
             dot.classList.add(StyleSheetManager.CLASS_NAME.COMMENT_DOT)
             dot.dataset[ChromeRuntimeHandler.DATA_ATTRIBUTE_NAME.FOREIGN] = ''
-            dot.textContent = '\uD83D\uDCAC'
+            dot.dataset.highlightId = message.highlightId
+            dot.innerHTML = COMMENT_DOT_SVG
             dot.addEventListener('click', (e) => {
               e.stopPropagation()
-              const markElm = e.currentTarget.closest('[id]')
+              const highlightId = e.currentTarget.dataset.highlightId
+              const markElm = this.document.getElementById(highlightId)
               document.dispatchEvent(new CustomEvent('ssh-edit-comment', {
                 detail: {
-                  highlightId: markElm.id,
-                  comment: markElm.dataset.comment || '',
-                  anchorRect: markElm.getBoundingClientRect(),
+                  highlightId,
+                  comment: markElm ? markElm.dataset.comment || '' : '',
+                  anchorRect: e.currentTarget.getBoundingClientRect(),
                 }
               }))
             })
-            elm.appendChild(dot)
+            lastElm.appendChild(dot)
           }
         } else {
-          // Clear comment
+          // Clear comment — dot may be on a sibling mark, find it by highlight ID
           delete elm.dataset.comment
-          const dot = elm.querySelector(`.${StyleSheetManager.CLASS_NAME.COMMENT_DOT}`)
+          const dot = this.document.querySelector(`.${StyleSheetManager.CLASS_NAME.COMMENT_DOT}[data-highlight-id="${message.highlightId}"]`)
           if (dot) dot.remove()
         }
         response = true
@@ -271,23 +285,26 @@ class ChromeRuntimeHandler {
     if (typeof comment === 'string' && comment.length > 0) {
       elms[0].dataset.comment = comment
 
-      // Comment icon — removed by removeHighlight() via [data-foreign] cleanup
+      // Comment icon on the last mark element so it appears at the end of the highlight.
+      // Removed by removeHighlight() via [data-foreign] cleanup.
       const dot = this.document.createElement('span')
       dot.classList.add(StyleSheetManager.CLASS_NAME.COMMENT_DOT)
       dot.dataset[ChromeRuntimeHandler.DATA_ATTRIBUTE_NAME.FOREIGN] = ''
-      dot.textContent = '\uD83D\uDCAC'
+      dot.dataset.highlightId = firstHighlightId
+      dot.innerHTML = COMMENT_DOT_SVG
       dot.addEventListener('click', (e) => {
         e.stopPropagation()
-        const markElm = e.currentTarget.closest('[id]')
+        const highlightId = e.currentTarget.dataset.highlightId
+        const markElm = this.document.getElementById(highlightId)
         document.dispatchEvent(new CustomEvent('ssh-edit-comment', {
           detail: {
-            highlightId: markElm.id,
-            comment: markElm.dataset.comment || '',
-            anchorRect: markElm.getBoundingClientRect(),
+            highlightId,
+            comment: markElm ? markElm.dataset.comment || '' : '',
+            anchorRect: e.currentTarget.getBoundingClientRect(),
           }
         }))
       })
-      elms[0].appendChild(dot)
+      elms[elms.length - 1].appendChild(dot)
     }
 
     if (version <= 3) {
