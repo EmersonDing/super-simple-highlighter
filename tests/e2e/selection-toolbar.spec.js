@@ -100,27 +100,33 @@ test('toolbar appears above selection when text is selected', async () => {
 
 test('clicking search button opens Google for the selected text and dismisses toolbar', async () => {
   const { page } = await setupPage()
+  let openedUrl = null
+
+  await context.route('https://www.google.com/**', async route => {
+    openedUrl = route.request().url()
+    await route.abort()
+  })
+
   await selectText(page)
   await page.waitForSelector('.ssh-toolbar-root', { timeout: 3000 })
 
   const firstButtonClass = await page.$eval('.ssh-toolbar-root button:first-of-type', el => el.className)
   expect(firstButtonClass).toBe('ssh-toolbar-search')
 
-  const popupPromise = page.waitForEvent('popup')
+  const newPagePromise = context.waitForEvent('page')
   await page.click('.ssh-toolbar-search')
-  const popup = await popupPromise
-  await popup.waitForLoadState('domcontentloaded')
+  const searchPage = await newPagePromise
+  await searchPage.waitForLoadState('load').catch(() => {})
 
-  const popupUrl = new URL(popup.url())
-  const searchTarget = popupUrl.searchParams.get('continue') || popup.url()
-
-  expect(searchTarget).toContain('https://www.google.com/search?q=')
-  expect(searchTarget).toContain(encodeURIComponent('This is a test sentence'))
+  const searchUrl = new URL(openedUrl)
+  expect(`${searchUrl.origin}${searchUrl.pathname}`).toBe('https://www.google.com/search')
+  expect(searchUrl.searchParams.get('q')).toBe('This is a test sentence')
 
   const toolbar = await page.$('.ssh-toolbar-root')
   expect(toolbar).toBeNull()
 
-  await popup.close()
+  await searchPage.close()
+  await context.unroute('https://www.google.com/**')
   await page.close()
 })
 

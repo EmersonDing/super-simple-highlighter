@@ -337,8 +337,14 @@ class SelectionToolbar {
       return
     }
 
-    window.open(`https://www.google.com/search?q=${encodeURIComponent(text)}`, '_blank', 'noopener')
-    this._dismiss()
+    ChromeRuntimeHandler.sendMessage({
+      id: ChromeRuntimeHandler.MESSAGE_ID.OPEN_URL,
+      url: `https://www.google.com/search?q=${encodeURIComponent(text)}`,
+    }).then(opened => {
+      if (opened) {
+        this._dismiss()
+      }
+    }).catch(console.error)
   }
 
   /** Comment click: highlight immediately, then expand to comment input */

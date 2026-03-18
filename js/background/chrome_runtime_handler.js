@@ -122,6 +122,20 @@ class ChromeRuntimeHandler {
         })()
         break
 
+      case ChromeRuntimeHandler.MESSAGE.OPEN_URL:
+        asynchronous = true
+
+        ChromeTabs.create({
+          url: message.url,
+          openerTabId: sender.tab && sender.tab.id
+        }).then(() => {
+          sendResponse(true)
+        }).catch((e) => {
+          console.error('OPEN_URL error:', e)
+          sendResponse(false)
+        })
+        break
+
       default:
         throw `Unhandled message: sender=${sender}, id=${message.id}`
     }
@@ -141,4 +155,5 @@ ChromeRuntimeHandler.MESSAGE = {
   DELETE_HIGHLIGHT: 'delete_highlight',
   CREATE_HIGHLIGHT_FROM_PAGE: 'create_highlight_from_page',
   UPDATE_HIGHLIGHT_COMMENT: 'update_highlight_comment',
+  OPEN_URL: 'open_url',
 }

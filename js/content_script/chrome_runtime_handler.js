@@ -549,6 +549,7 @@ ChromeRuntimeHandler.MESSAGE_ID = {
   DELETE_HIGHLIGHT: 'delete_highlight',
   CREATE_HIGHLIGHT_FROM_PAGE: 'create_highlight_from_page',
   UPDATE_HIGHLIGHT_COMMENT: 'update_highlight_comment',
+  OPEN_URL: 'open_url',
 }
 
 ChromeRuntimeHandler.DATA_ATTRIBUTE_NAME = {
