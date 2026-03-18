@@ -51,6 +51,8 @@ angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", fu
       this.scope = scope
 
       this.scope.documentFilterText = ""
+      this.scope.showPageTextMenuOpen = false
+      this.scope.showPageTextMenuDirection = 'down'
       this.scope.filters = {
         // filter predicate called on individual groups
         // (delegates to document filter)
@@ -78,9 +80,14 @@ angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", fu
         this.onClickRemoveAllHighlights,
         this.onClickRemoveAllBookmarks,
         this.onClickSaveAsMarkdown,
+        this.toggleShowPageTextMenu,
+        this.setShowPageText,
       ]) {
 				this.scope[func.name] = func.bind(this)
       }
+
+      this.onDocumentClick = this.onDocumentClick.bind(this)
+      document.addEventListener('click', this.onDocumentClick, true)
 
       // manually add event listeners to mouseenter/leave on div containing bookmarks tab
       // TODO: move to HTML
@@ -441,6 +448,48 @@ angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", fu
     }
 
     // click handlers
+
+    onDocumentClick(event) {
+      if (!this.scope.showPageTextMenuOpen) {
+        return
+      }
+
+      const menuElm = document.querySelector('.show-highlights-menu')
+
+      if (menuElm && menuElm.contains(event.target)) {
+        return
+      }
+
+      this.scope.showPageTextMenuOpen = false
+      this.scope.$apply()
+    }
+
+    toggleShowPageTextMenu($event) {
+      if ($event) {
+        $event.stopPropagation()
+      }
+
+      const buttonElm = $event && $event.currentTarget
+
+      this.scope.showPageTextMenuDirection = this.getShowPageTextMenuDirection(buttonElm)
+      this.scope.showPageTextMenuOpen = !this.scope.showPageTextMenuOpen
+    }
+
+    setShowPageText(value) {
+      this.scope.options.showPageText = value
+      this.scope.showPageTextMenuOpen = false
+    }
+
+    getShowPageTextMenuDirection(buttonElm) {
+      if (!buttonElm || typeof buttonElm.getBoundingClientRect !== 'function') {
+        return 'down'
+      }
+
+      const rect = buttonElm.getBoundingClientRect()
+      const estimatedMenuHeight = 96
+
+      return rect.bottom + estimatedMenuHeight > window.innerHeight ? 'up' : 'down'
+    }
 
     /**
      * Button on the text of each highlight was clicked

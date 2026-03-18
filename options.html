@@ -225,9 +225,20 @@
 								<span class="glyphicon glyphicon-save-file" aria-hidden="true"></span>
 							</button>
 
-							<button type="button" class="btn btn-default btn-icon" ng-click="options.showPageText = !options.showPageText" ng-class="{'is-active': options.showPageText}" title="{{ 'show_page_highlight_text' | i18n }}" aria-pressed="{{options.showPageText}}" aria-label="{{ 'show_page_highlight_text' | i18n }}">
-								<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
-							</button>
+							<div class="show-highlights-menu" ng-class="{'is-open': showPageTextMenuOpen, 'show-highlights-menu-up': showPageTextMenuDirection === 'up', 'show-highlights-menu-down': showPageTextMenuDirection !== 'up'}">
+								<button type="button" class="btn btn-default btn-icon" ng-click="toggleShowPageTextMenu($event)" ng-class="{'is-active': options.showPageText || showPageTextMenuOpen}" title="{{ 'show_page_highlight_text' | i18n }}" aria-expanded="{{showPageTextMenuOpen}}" aria-label="{{ 'show_page_highlight_text' | i18n }}">
+									<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
+								</button>
+
+								<div class="show-highlights-menu-panel" ng-show="showPageTextMenuOpen">
+									<button type="button" class="btn btn-default btn-icon" ng-click="setShowPageText(true)" ng-class="{'is-active': options.showPageText}" title="{{ 'show_page_highlight_text' | i18n }}" aria-label="{{ 'show_page_highlight_text' | i18n }}">
+										<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
+									</button>
+									<button type="button" class="btn btn-default btn-icon" ng-click="setShowPageText(false)" ng-class="{'is-active': !options.showPageText}" title="Hide Highlights" aria-label="Hide Highlights">
+										<span class="glyphicon glyphicon-ban-circle" aria-hidden="true"></span>
+									</button>
+								</div>
+							</div>
 						</div>
 
 						<!-- Grouping & Direction -->
