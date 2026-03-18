@@ -313,7 +313,7 @@ class DB {
    * @param {Object|string} xrange - object identifying range of highlight. Usually type XRange. Must be stringifyable.
    * @param {string} className - name of class identifying style of highlight
    * @param {string} text - text contained within highlight
-   * @param {Object} optionals [{title = undefined, date = Date.now(), }={}] - optional things
+   * @param {Object} optionals [{title = undefined, date = Date.now(), comment = undefined, }={}] - optional things
    * @param {Object} [options] - options object
    * @returns {Promise<PutResponse>}
    * @memberof DB
@@ -321,6 +321,7 @@ class DB {
   putCreateDocument(match, xrange, className, text, {
     title = undefined,
     date = Date.now(),
+    comment = undefined,
   } = {}, options = {}) {
     // the document to be put (put because we specify the _id, which gets used as the DOM highlight id)
     // naive, but ok for now
@@ -343,6 +344,10 @@ class DB {
       doc[DB.DOCUMENT.NAME.TITLE] = title
     }
 
+    if (typeof comment === 'string') {
+      doc[DB.DOCUMENT.NAME.COMMENT] = comment
+    }
+
     return this.putDB(doc, { id: StringUtils.newUUID() })
   }
 
@@ -350,14 +355,15 @@ class DB {
    * Update values of an existing `create` document
    * 
    * @param {string} docId - id of 'create' document to update
-   * @param {any} values [{ className=undefined, title=undefined }={}] - new values
+   * @param {any} values [{ className=undefined, title=undefined, comment=undefined }={}] - new values
    * @param {any} [options={rev=undefined}] 
    * @returns {Promise<PutResponse>}
    * @memberof DB
    */
   updateCreateDocument(docId, {
-    className=undefined, 
+    className=undefined,
     title=undefined,
+    comment=undefined,
   } = {}, options = {}) {
     // options for getting existing 'create' doc
     const o = {}
@@ -373,8 +379,9 @@ class DB {
       }
 
       // change required?
-      if (className === doc[DB.DOCUMENT.NAME.CLASS_NAME] && 
-        title === doc[DB.DOCUMENT.NAME.TITLE]) {
+      if (className === doc[DB.DOCUMENT.NAME.CLASS_NAME] &&
+        title === doc[DB.DOCUMENT.NAME.TITLE] &&
+        comment === doc[DB.DOCUMENT.NAME.COMMENT]) {
         // fake success
         return {
           ok: true,
@@ -388,6 +395,10 @@ class DB {
       }
       if (title) {
         doc[DB.DOCUMENT.NAME.TITLE] = title
+      }
+      // Use typeof check (not truthiness) so empty string "" correctly clears an existing comment
+      if (typeof comment === 'string') {
+        doc[DB.DOCUMENT.NAME.COMMENT] = comment
       }
       
       // update existing doc
@@ -787,6 +798,8 @@ DB.DOCUMENT = {
     // id of 'create' doc associated with this `delete` doc
     CORRESPONDING_DOC_ID: 'correspondingDocumentId',
     // version of ssh used to create document. Only used ssh v4+
-    VERSION: 'v'
+    VERSION: 'v',
+    // optional user comment attached to highlight
+    COMMENT: 'comment',
   }
 }

@@ -136,8 +136,20 @@ class ChromeHighlightStorage extends ChromeStorage {
   getAll({ defaults = true } = {}) {
     return super.get({
       [ChromeHighlightStorage.KEYS.HIGHLIGHT_DEFINITIONS]: (defaults && this.defaultHighlightDefinitions) || null,
-      [ChromeHighlightStorage.KEYS.SHARED_HIGHLIGHT_STYLE]: (defaults && ChromeHighlightStorage.SHARED_HIGHLIGHT_STYLE) || null
+      [ChromeHighlightStorage.KEYS.SHARED_HIGHLIGHT_STYLE]: (defaults && ChromeHighlightStorage.SHARED_HIGHLIGHT_STYLE) || null,
+      [ChromeHighlightStorage.KEYS.PEN_BUTTON_CLASS_NAME]: null,
     })
+  }
+
+  /**
+   * Set the pen button default class name
+   *
+   * @param {string} className
+   * @returns {Promise}
+   * @memberof ChromeHighlightStorage
+   */
+  setPenButtonClassName(className) {
+    return super.set({ [ChromeHighlightStorage.KEYS.PEN_BUTTON_CLASS_NAME]: className })
   }
 
   /**
@@ -238,6 +250,7 @@ class ChromeHighlightStorage extends ChromeStorage {
 Object.assign(ChromeHighlightStorage.KEYS, {
   HIGHLIGHT_DEFINITIONS: 'highlightDefinitions',
   SHARED_HIGHLIGHT_STYLE: 'sharedHighlightStyle',
+  PEN_BUTTON_CLASS_NAME: 'penButtonClassName',
 })
 
 ChromeHighlightStorage.SHARED_HIGHLIGHT_STYLE = {

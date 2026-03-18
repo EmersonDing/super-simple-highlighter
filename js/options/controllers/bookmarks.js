@@ -175,6 +175,7 @@ angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", fu
                     docId: doc._id,
                     date: doc.date,
                     className: doc.className,
+                    comment: doc.comment,
                 }
             })
         }

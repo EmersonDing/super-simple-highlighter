@@ -194,6 +194,15 @@
 							<div range-slider min="0.3" max="1.0" model-max="options.highlightBackgroundAlpha" attach-handle-values="true"
 								step="0.1" decimal-places="2" pin-handle="min" filter="alphaPercent"></div>
 						</div>
+
+						<!--Pen button default style-->
+						<div class="row" style="margin-top:10px">
+							<label>Pen button default style:
+								<select ng-model="penButtonClassName" ng-change="onChangePenButtonStyle(penButtonClassName)">
+									<option ng-repeat="hd in highlightDefinitions" value="{{hd.className}}">{{hd.title}}</option>
+								</select>
+							</label>
+						</div>
 					</div>
 
 
@@ -276,6 +285,9 @@
 									<ul class="list-inline page-text-list" ng-show="options.showPageText">
 										<li ng-repeat="t in doc.texts" class="list-inline page-text-list-item {{t.className}}" title="{{ t.date | date:'medium' }}">
 											{{ t.text || "&nbsp" }}
+											<span ng-show="t.comment" style="font-size:10px; color:#666; font-style:italic; display:block; margin-top:2px;">
+												&#128172; {{t.comment}}
+											</span>
 
 											<button type="button" class="list-item-close" ng-click="onClickRemoveHighlight(t.docId, doc)" title="{{ 'remove_highlight' | i18n }}"></button>
 										</li>

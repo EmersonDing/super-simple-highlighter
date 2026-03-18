@@ -15,6 +15,8 @@
  * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+const COMMENT_DOT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 32 32" fill="none"><rect x="3" y="2" width="26" height="21" rx="7" fill="#3a3a3c"/><path d="M10 23 L9 30 L18 23" fill="#3a3a3c"/></svg>`
+
 /**
  * Handlers for chrome.runtime events
  * 
@@ -90,7 +92,7 @@ class ChromeRuntimeHandler {
             return false
           }
 
-          const elms = this.createHighlight(range, highlightId, className, version)
+          const elms = this.createHighlight(range, highlightId, className, version, message.comment)
           return elms.length > 0
         })(message.range, message.highlightId, message.className, message.version || 4)
         break
@@ -178,6 +180,53 @@ class ChromeRuntimeHandler {
         response = this.getHoveredHighlightID()
         break
 
+      case ChromeTabs.MESSAGE_ID.SET_HIGHLIGHT_COMMENT: {
+        const elm = this.document.getElementById(message.highlightId)
+        if (!elm) break
+
+        if (typeof message.comment === 'string' && message.comment.length > 0) {
+          elm.dataset.comment = message.comment
+
+          // Find the last mark element of this highlight so the dot appears at the end
+          let lastElm = elm
+          while (
+            lastElm.nextElementSibling &&
+            lastElm.nextElementSibling.classList.contains(this.styleSheetManager.sharedHighlightClassName)
+          ) {
+            lastElm = lastElm.nextElementSibling
+          }
+
+          // Add icon if not already present
+          if (!lastElm.querySelector(`.${StyleSheetManager.CLASS_NAME.COMMENT_DOT}`)) {
+            const dot = this.document.createElement('span')
+            dot.classList.add(StyleSheetManager.CLASS_NAME.COMMENT_DOT)
+            dot.dataset[ChromeRuntimeHandler.DATA_ATTRIBUTE_NAME.FOREIGN] = ''
+            dot.dataset.highlightId = message.highlightId
+            dot.innerHTML = COMMENT_DOT_SVG
+            dot.addEventListener('click', (e) => {
+              e.stopPropagation()
+              const highlightId = e.currentTarget.dataset.highlightId
+              const markElm = this.document.getElementById(highlightId)
+              document.dispatchEvent(new CustomEvent('ssh-edit-comment', {
+                detail: {
+                  highlightId,
+                  comment: markElm ? markElm.dataset.comment || '' : '',
+                  anchorRect: e.currentTarget.getBoundingClientRect(),
+                }
+              }))
+            })
+            lastElm.appendChild(dot)
+          }
+        } else {
+          // Clear comment — dot may be on a sibling mark, find it by highlight ID
+          delete elm.dataset.comment
+          const dot = this.document.querySelector(`.${StyleSheetManager.CLASS_NAME.COMMENT_DOT}[data-highlight-id="${message.highlightId}"]`)
+          if (dot) dot.remove()
+        }
+        response = true
+        break
+      }
+
       default:
         console.error(`Unhandled message`, message)
         break
@@ -201,10 +250,11 @@ class ChromeRuntimeHandler {
    * @param {string} firstHighlightId - #id to add to first mark
    * @param {string} className - class name (aka highlight definiton id) to add to every mark
    * @param {number} [version=4] - version used to create highlight. If <= 3 it implies it's a recreation, and assume compat behaviour
+   * @param {string} [comment] - optional comment text; sets data-comment and appends dot indicator
    * @returns {HTMLElement[]} - mark elements - can be empty
    * @memberof ChromeRuntimeHandler
    */
-  createHighlight(range, firstHighlightId, className, version = 4) {
+  createHighlight(range, firstHighlightId, className, version = 4, comment) {
     // new highlights use 'mark' tag
     const tagName = version <= 3 ? 'span' : 'mark'
 
@@ -231,6 +281,32 @@ class ChromeRuntimeHandler {
     elms[0].setAttribute('tabindex', '0')
     // firstSpan.classList.add("closeable");
 
+    // Set comment data and dot indicator
+    if (typeof comment === 'string' && comment.length > 0) {
+      elms[0].dataset.comment = comment
+
+      // Comment icon on the last mark element so it appears at the end of the highlight.
+      // Removed by removeHighlight() via [data-foreign] cleanup.
+      const dot = this.document.createElement('span')
+      dot.classList.add(StyleSheetManager.CLASS_NAME.COMMENT_DOT)
+      dot.dataset[ChromeRuntimeHandler.DATA_ATTRIBUTE_NAME.FOREIGN] = ''
+      dot.dataset.highlightId = firstHighlightId
+      dot.innerHTML = COMMENT_DOT_SVG
+      dot.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const highlightId = e.currentTarget.dataset.highlightId
+        const markElm = this.document.getElementById(highlightId)
+        document.dispatchEvent(new CustomEvent('ssh-edit-comment', {
+          detail: {
+            highlightId,
+            comment: markElm ? markElm.dataset.comment || '' : '',
+            anchorRect: e.currentTarget.getBoundingClientRect(),
+          }
+        }))
+      })
+      elms[elms.length - 1].appendChild(dot)
+    }
+
     if (version <= 3) {
       // to be compatible with recreated highlights from v3, a dummy 'close' button is needed
       elms[0].appendChild(document.createElement("span"));
@@ -252,7 +328,11 @@ class ChromeRuntimeHandler {
     // don't remove these classes
     const whitelist = [this.styleSheetManager.sharedHighlightClassName]
 
-    return new Marker(this.document).update(highlightId, newClassName, whitelist)
+    const result = new Marker(this.document).update(highlightId, newClassName, whitelist)
+
+    // dataset.comment is preserved: Marker.update() modifies classList in-place without replacing elements.
+
+    return result
   }
 
   /**
@@ -467,6 +547,8 @@ class ChromeRuntimeHandler {
 // id for messages sent TO background page
 ChromeRuntimeHandler.MESSAGE_ID = {
   DELETE_HIGHLIGHT: 'delete_highlight',
+  CREATE_HIGHLIGHT_FROM_PAGE: 'create_highlight_from_page',
+  UPDATE_HIGHLIGHT_COMMENT: 'update_highlight_comment',
 }
 
 ChromeRuntimeHandler.DATA_ATTRIBUTE_NAME = {

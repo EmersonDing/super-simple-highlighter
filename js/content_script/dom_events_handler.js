@@ -103,6 +103,11 @@ class DOMEventsHandler {
     )
 
     firstElm.appendChild(closeElm)
+
+    // Show comment tooltip if comment exists
+    if (firstElm.dataset.comment) {
+      this._showCommentTooltip(firstElm)
+    }
   }
 
   /**
@@ -132,6 +137,7 @@ class DOMEventsHandler {
     let closeElm = /** @type {HTMLButtonElement} */ (firstElm.querySelector(`.${StyleSheetManager.CLASS_NAME.CLOSE}`))
     
     if (!closeElm) {
+      this._hideCommentTooltip()
       return
     }
 
@@ -166,6 +172,9 @@ class DOMEventsHandler {
       }
             
     }, DOMEventsHandler.CLOSE_BUTTON.TIMEOUT).toString()
+
+    // Hide comment tooltip
+    this._hideCommentTooltip()
   }
 
   //
@@ -191,6 +200,55 @@ class DOMEventsHandler {
 
     // send message to event page to both delete highlight from DB and the DOM
     return ChromeRuntimeHandler.deleteHighlight(firstElm.id)
+  }
+
+  /**
+   * Show a tooltip above the highlight element with the comment text
+   *
+   * @private
+   * @param {HTMLElement} markElm - first <mark> element of the highlight
+   */
+  _showCommentTooltip(markElm) {
+    this._hideCommentTooltip()
+
+    const tooltip = this.document.createElement('div')
+    tooltip.classList.add(StyleSheetManager.CLASS_NAME.COMMENT_TOOLTIP)
+    // textContent — never innerHTML — prevents XSS
+    tooltip.textContent = markElm.dataset.comment
+
+    const rect = markElm.getBoundingClientRect()
+    tooltip.style.cssText = `
+      all: initial;
+      position: fixed;
+      background: #2c2c2c;
+      color: #fff;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font: 13px/1.5 -apple-system, sans-serif;
+      max-width: 260px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+      pointer-events: none;
+      z-index: 2147483647;
+      white-space: normal;
+      word-break: break-word;
+      left: ${Math.round(rect.left)}px;
+      top: ${Math.round(rect.top - 48)}px;
+    `
+
+    this.document.body.appendChild(tooltip)
+    this._commentTooltip = tooltip
+  }
+
+  /**
+   * Remove comment tooltip from DOM
+   *
+   * @private
+   */
+  _hideCommentTooltip() {
+    if (this._commentTooltip) {
+      this._commentTooltip.remove()
+      this._commentTooltip = null
+    }
   }
 }
 

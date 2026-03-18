@@ -38,10 +38,12 @@ class Highlighter {
   * @param {string} match - match string to identify related highlights. Usually processed from url
   * @param {string} text - text of highlight
   * @param {string} className - class name identifying highlight style to apply to DOM element, and in database also
+  * @param {Object} [options={}] - optional parameters
+  * @param {string} [options.comment] - optional comment to attach to the highlight
   * @returns {Promise}
   * @memberof Highlighter
   */
-  create(xrange, match, text, className) {
+  create(xrange, match, text, className, { comment } = {}) {
     if (xrange.collapsed) {
       return Promise.reject(new Error("Collapsed range"))
     }
@@ -72,6 +74,10 @@ class Highlighter {
         optional.title = tab.title
       }
 
+      if (typeof comment === 'string') {
+        optional.comment = comment
+      }
+
       return db.putCreateDocument(match, xrange, className, text, optional)
     }).then(response => {
       doc = {
@@ -81,7 +87,7 @@ class Highlighter {
 
       // use the new document's id for the element id of the (first) highlight element
       try {
-        return tabs.createHighlight(xrange, className, doc.id)
+        return tabs.createHighlight(xrange, className, doc.id, undefined, comment)
       } catch (e) {
         // always rejects
         return db.removeDB(doc.id, doc.rev).then(() => {
@@ -100,6 +106,7 @@ class Highlighter {
 
       // (re) enable the toolbar action on success
       chrome.action.enable(tabs.tabId)
+      return doc.id
     })
     
     // .then(() => {

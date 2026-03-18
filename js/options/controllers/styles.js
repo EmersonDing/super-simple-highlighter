@@ -70,6 +70,7 @@ angular.module('stylesControllers', []).controller('styles', ["$scope", function
         this.onClickRemoveStyle,
         this.onClickCreateNewStyle,
         this.onClickResetToDefaultStyles,
+        this.onChangePenButtonStyle,
       ]) {
 				this.scope[func.name] = func.bind(this)
       }
@@ -104,14 +105,16 @@ angular.module('stylesControllers', []).controller('styles', ["$scope", function
         // initial update is via a fake call to onStorageChange()
         return new ChromeHighlightStorage().getAll()
       }).then(items => {
+        this.scope.penButtonClassName = items[ChromeHighlightStorage.KEYS.PEN_BUTTON_CLASS_NAME] || ''
+
         // define a change that resets styles to stored values
         return this.onStorageChanged({
-          [ChromeHighlightStorage.KEYS.SHARED_HIGHLIGHT_STYLE]: { 
-              newValue: items[ChromeHighlightStorage.KEYS.SHARED_HIGHLIGHT_STYLE] 
+          [ChromeHighlightStorage.KEYS.SHARED_HIGHLIGHT_STYLE]: {
+              newValue: items[ChromeHighlightStorage.KEYS.SHARED_HIGHLIGHT_STYLE]
           },
-          [ChromeHighlightStorage.KEYS.HIGHLIGHT_DEFINITIONS]: { 
-              newValue: items[ChromeHighlightStorage.KEYS.HIGHLIGHT_DEFINITIONS] 
-          }, 
+          [ChromeHighlightStorage.KEYS.HIGHLIGHT_DEFINITIONS]: {
+              newValue: items[ChromeHighlightStorage.KEYS.HIGHLIGHT_DEFINITIONS]
+          },
         }, 'sync')
       })
     }
@@ -305,8 +308,18 @@ angular.module('stylesControllers', []).controller('styles', ["$scope", function
     }
 
     /**
+     * Pen button style selector changed
+     *
+     * @param {string} className
+     * @memberof Controller
+     */
+    onChangePenButtonStyle(className) {
+      return new ChromeHighlightStorage().setPenButtonClassName(className)
+    }
+
+    /**
      * Clicked 'reset to default styles' button
-     * 
+     *
      * @memberof Controller
      */
     onClickResetToDefaultStyles () {
@@ -314,7 +327,11 @@ angular.module('stylesControllers', []).controller('styles', ["$scope", function
         return Promise.resolve()
       }
 
-      return new ChromeHighlightStorage().removeAll()
+      const storage = new ChromeHighlightStorage()
+      const orangeClass = 'default-orange-da01945e-1964-4d27-8a6c-3331e1fe7f14'
+      this.scope.penButtonClassName = orangeClass
+      storage.setPenButtonClassName(orangeClass)
+      return storage.removeAll()
     }
     
   } // end class

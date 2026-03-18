@@ -300,16 +300,18 @@ class ChromeTabs {
    * @param {string} className - name of class defining style of highlight
    * @param {string} highlightId - unique id for highlight, usually same as 'create' document's Id
    * @param {number} [version] - 'version' of document used to create tab. If < 4, assumes compat behaviour
+   * @param {string} [comment] - optional comment text attached to the highlight
    * @param {MessageOptions} [options] - message options
-   * @returns {Promise<boolean>} true if highlight span could be created 
+   * @returns {Promise<boolean>} true if highlight span could be created
    * @memberof ChromeTabs
    */
-  createHighlight(range, className, highlightId, version, options) {
+  createHighlight(range, className, highlightId, version, comment, options) {
     return this.sendMessage(ChromeTabs.MESSAGE_ID.CREATE_HIGHLIGHT, {
       range: range,
       highlightId: highlightId,
       className: className,
       version: version,
+      comment: comment,
     }, options)
   }
 
@@ -473,6 +475,22 @@ class ChromeTabs {
     return this.sendMessage(ChromeTabs.MESSAGE_ID.GET_HOVERED_HIGHLIGHT_ID)
   }
 
+  /**
+   * Set or clear the comment on a highlight in the DOM
+   *
+   * @param {string} highlightId - #id of (first) highlight mark element
+   * @param {string} comment - comment text; empty string clears the comment
+   * @param {MessageOptions} [options] - message options
+   * @returns {Promise<boolean>}
+   * @memberof ChromeTabs
+   */
+  setHighlightComment(highlightId, comment, options) {
+    return this.sendMessage(ChromeTabs.MESSAGE_ID.SET_HIGHLIGHT_COMMENT, {
+      highlightId: highlightId,
+      comment: comment,
+    }, options)
+  }
+
   // /** 
   //  * @typedef {Object} Document
   //  * @prop {string} verb - create or delete 
@@ -518,7 +536,9 @@ class ChromeTabs {
                 doc[DB.DOCUMENT.NAME.RANGE],
                 doc[DB.DOCUMENT.NAME.CLASS_NAME],
                 doc._id,
-                version)
+                version,
+                doc[DB.DOCUMENT.NAME.COMMENT],  // may be undefined, that's fine
+              )
 
             case DB.DOCUMENT.VERB.DELETE:
               sum--
@@ -687,6 +707,7 @@ ChromeTabs.DEFAULT_SCRIPTS = [
   "js/content_script/dom_events_handler.js",
   "js/content_script/chrome_storage_handler.js",
   "js/content_script/chrome_runtime_handler.js",
+  "js/content_script/selection_toolbar.js",
   "js/content_script/main.js",
 ]
 
@@ -703,5 +724,6 @@ ChromeTabs.MESSAGE_ID = {
   SCROLL_TO_HIGHLIGHT: 'scroll_to_highlight',
   GET_NODE_ATTRIBUTE_VALUE: 'get_node_attribute_value',
   GET_HIGHLIGHT_OFFSET: 'get_highlight_offset',
-  GET_HOVERED_HIGHLIGHT_ID: 'get_hovered_highlight_id'
+  GET_HOVERED_HIGHLIGHT_ID: 'get_hovered_highlight_id',
+  SET_HIGHLIGHT_COMMENT: 'set_highlight_comment',
 }

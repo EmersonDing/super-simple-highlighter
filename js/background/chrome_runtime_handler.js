@@ -81,6 +81,47 @@ class ChromeRuntimeHandler {
         })
         break
 
+      case ChromeRuntimeHandler.MESSAGE.CREATE_HIGHLIGHT_FROM_PAGE:
+        asynchronous = true
+
+        ;(async () => {
+          try {
+            const match = DB.formatMatch(sender.tab.url)
+            const docId = await new Highlighter(sender.tab.id).create(
+              message.xrange,
+              match,
+              message.text,
+              message.className,
+              { comment: message.comment }
+            )
+            sendResponse(docId)
+          } catch (e) {
+            console.error('CREATE_HIGHLIGHT_FROM_PAGE error:', e)
+            sendResponse(false)
+          }
+        })()
+        break
+
+      case ChromeRuntimeHandler.MESSAGE.UPDATE_HIGHLIGHT_COMMENT:
+        asynchronous = true
+
+        ;(async () => {
+          try {
+            await new DB().updateCreateDocument(message.highlightId, {
+              comment: message.comment
+            })
+            await new ChromeTabs(sender.tab.id).setHighlightComment(
+              message.highlightId,
+              message.comment
+            )
+            sendResponse(true)
+          } catch (e) {
+            console.error('UPDATE_HIGHLIGHT_COMMENT error:', e)
+            sendResponse(false)
+          }
+        })()
+        break
+
       default:
         throw `Unhandled message: sender=${sender}, id=${message.id}`
     }
@@ -98,4 +139,6 @@ class ChromeRuntimeHandler {
 // messages sent to the event page (from content script)
 ChromeRuntimeHandler.MESSAGE = {
   DELETE_HIGHLIGHT: 'delete_highlight',
+  CREATE_HIGHLIGHT_FROM_PAGE: 'create_highlight_from_page',
+  UPDATE_HIGHLIGHT_COMMENT: 'update_highlight_comment',
 }
