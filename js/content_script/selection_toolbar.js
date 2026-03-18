@@ -15,6 +15,10 @@
  * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+const HIGHLIGHT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M6 26 L24 8" stroke="#3a3a3c" stroke-width="5.5" stroke-linecap="round"/><rect x="3" y="25" width="7" height="4" rx="1" fill="#3a3a3c" transform="rotate(-45 6 26)"/></svg>`
+const COMMENT_SVG_16 = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32" fill="none"><rect x="3" y="2" width="26" height="21" rx="7" fill="#e5e5ea"/><path d="M10 23 L9 30 L18 23" fill="#e5e5ea"/></svg>`
+const COMMENT_SVG_13 = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 32 32" fill="none"><rect x="3" y="2" width="26" height="21" rx="7" fill="#e5e5ea"/><path d="M10 23 L9 30 L18 23" fill="#e5e5ea"/></svg>`
+
 /**
  * Floating selection toolbar
  * Appears above text selections with pen (highlight) and comment buttons.
@@ -204,7 +208,7 @@ class SelectionToolbar {
     const pen = this.document.createElement('button')
     pen.className = 'ssh-toolbar-pen'
     pen.title = 'Highlight'
-    pen.textContent = '\u270F\uFE0F'
+    pen.innerHTML = HIGHLIGHT_SVG
     pen.style.background = this._activeBgColor || '#ffffaa'
     pen.addEventListener('click', () => this._onPenClick(range), { once: true })
 
@@ -216,7 +220,7 @@ class SelectionToolbar {
     const comment = this.document.createElement('button')
     comment.className = 'ssh-toolbar-comment'
     comment.title = 'Comment & Highlight'
-    comment.textContent = '\uD83D\uDCAC'
+    comment.innerHTML = COMMENT_SVG_16
     comment.addEventListener('click', () => this._onCommentClick(range), { once: true })
 
     // Caret
@@ -242,8 +246,7 @@ class SelectionToolbar {
     this._toolbarElm.innerHTML = ''
 
     const icon = this.document.createElement('span')
-    icon.textContent = '\uD83D\uDCAC'
-    icon.style.cssText = 'font-size:13px'
+    icon.innerHTML = COMMENT_SVG_13
 
     const divider = this.document.createElement('span')
     divider.className = 'ssh-toolbar-divider'
@@ -390,8 +393,7 @@ class SelectionToolbar {
     toolbar.className = 'ssh-toolbar-root'
 
     const icon = this.document.createElement('span')
-    icon.textContent = '\uD83D\uDCAC'
-    icon.style.cssText = 'font-size:13px'
+    icon.innerHTML = COMMENT_SVG_13
 
     const divider = this.document.createElement('span')
     divider.className = 'ssh-toolbar-divider'
