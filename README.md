@@ -6,7 +6,7 @@ A Chrome extension for highlighting text on web pages, with automatic restoratio
 
 ## Selection toolbar
 
-When you select text on a page, the extension shows a floating toolbar for quick actions:
+When you select text on a page, the extension shows a floating toolbar positioned near the cursor location for quick actions:
 
 - **Google search**: Open a new tab to search Google for the selected text
 - **Highlight**: Save the selection with your active highlight color
@@ -20,7 +20,7 @@ When you select text on a page, the extension shows a floating toolbar for quick
 - **PING rejection fix**: Content script injection now handles rejected PING messages correctly, allowing the inject-then-retry flow to work
 - **PouchDB MV3 CSP fix**: Replaced `db.query()` (map/reduce) with `db.allDocs()` + in-memory filtering to avoid `Function()` calls blocked by MV3's strict Content Security Policy
 - **E2E tests**: Added Playwright-based end-to-end tests for highlight creation and persistence
-- **Selection toolbar**: Added quick actions for Google search, highlight creation, and highlight comments
+- **Selection toolbar**: Added quick actions for Google search, highlight creation, and highlight comments, now positioned near the cursor location
 
 ## Installation
 

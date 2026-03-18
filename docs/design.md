@@ -6,7 +6,7 @@ Super Simple Highlighter is a Chrome extension for saving text highlights on web
 
 ## Current Product Design
 
-- **Selection-first workflow**: selecting text opens a floating toolbar with three quick actions:
+- **Selection-first workflow**: selecting text opens a floating toolbar positioned near the cursor location with three quick actions:
   - search the selected text on Google
   - create a highlight with the active pen style
   - create a highlight and attach a comment
