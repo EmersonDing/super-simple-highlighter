@@ -543,6 +543,16 @@ class DB {
     })
   }
 
+  /**
+   * Get all documents in the database
+   * @returns {Promise<Object[]>} array of all documents (design docs excluded by PouchDB default)
+   */
+  getAllDocuments() {
+    return this.getDB().then(db => db.allDocs({ include_docs: true })).then(({rows}) =>
+      rows.map(r => r.doc).filter(Boolean)
+    )
+  }
+
   //
 
   /**
