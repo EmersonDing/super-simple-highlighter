@@ -75,9 +75,25 @@ async function setupPage() {
   return { page, pageUrl }
 }
 
+
+async function getToolbarMetrics(page) {
+  return page.evaluate(() => {
+    const toolbar = document.querySelector('.ssh-toolbar-root')
+    if (!toolbar) return null
+
+    const toolbarRect = toolbar.getBoundingClientRect()
+    return {
+      left: toolbarRect.left,
+      top: toolbarRect.top,
+      width: toolbarRect.width,
+      height: toolbarRect.height,
+    }
+  })
+}
+
 /** Helper: select text in the target element and dispatch mouseup to show toolbar */
 async function selectText(page) {
-  await page.evaluate(() => {
+  return page.evaluate(() => {
     const target = document.getElementById('target')
     const range = document.createRange()
     range.setStart(target.firstChild, 0)
@@ -85,16 +101,72 @@ async function selectText(page) {
     const sel = window.getSelection()
     sel.removeAllRanges()
     sel.addRange(range)
+
+    const rects = Array.from(range.getClientRects())
+    const lastRect = rects[rects.length - 1]
+    const cursor = {
+      x: Math.round(lastRect.right),
+      y: Math.round(lastRect.bottom),
+    }
+
+    document.dispatchEvent(new MouseEvent('mouseup', {
+      bubbles: true,
+      clientX: cursor.x,
+      clientY: cursor.y,
+    }))
+
+    return cursor
   })
-  // Dispatch mouseup to trigger toolbar
-  await page.evaluate(() => document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })))
 }
 
-test('toolbar appears above selection when text is selected', async () => {
+test("toolbar appears near the cursor location when text is selected", async () => {
   const { page } = await setupPage()
-  await selectText(page)
-  const toolbar = await page.waitForSelector('.ssh-toolbar-root', { timeout: 3000 })
+  const cursor = await selectText(page)
+  const toolbarRoot = await page.waitForSelector('.ssh-toolbar-root', { timeout: 3000 })
+  expect(toolbarRoot).toBeTruthy()
+
+  const toolbar = await getToolbarMetrics(page)
   expect(toolbar).toBeTruthy()
+  expect(Math.abs(toolbar.left - cursor.x)).toBeLessThanOrEqual(2)
+  expect(toolbar.top + toolbar.height).toBeLessThanOrEqual(cursor.y + 2)
+
+  await page.close()
+})
+
+
+test("toolbar follows the mouseup cursor for wrapped selections", async () => {
+  const { page } = await setupPage()
+  const cursor = await page.evaluate(() => {
+    const target = document.getElementById('target')
+    const range = document.createRange()
+    range.setStart(target.firstChild, 0)
+    range.setEnd(target.firstChild, target.firstChild.textContent.length - 1)
+    const sel = window.getSelection()
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    const rects = Array.from(range.getClientRects())
+    const lastRect = rects[rects.length - 1]
+    const cursorPoint = {
+      x: Math.round(lastRect.right),
+      y: Math.round(lastRect.bottom),
+    }
+
+    document.dispatchEvent(new MouseEvent('mouseup', {
+      bubbles: true,
+      clientX: cursorPoint.x,
+      clientY: cursorPoint.y,
+    }))
+
+    return cursorPoint
+  })
+  await page.waitForSelector('.ssh-toolbar-root', { timeout: 3000 })
+
+  const toolbar = await getToolbarMetrics(page)
+  expect(toolbar).toBeTruthy()
+  expect(Math.abs(toolbar.left - cursor.x)).toBeLessThanOrEqual(2)
+  expect(toolbar.top + toolbar.height).toBeLessThanOrEqual(cursor.y + 2)
+
   await page.close()
 })
 

@@ -76,7 +76,6 @@ class SelectionToolbar {
         box-shadow: 0 4px 16px rgba(0,0,0,0.35);
         font-family: -apple-system, sans-serif;
         white-space: nowrap;
-        transform: translateX(-50%);
       }
       .ssh-toolbar-root * { box-sizing: border-box; }
       .ssh-toolbar-search, .ssh-toolbar-pen, .ssh-toolbar-comment, .ssh-toolbar-save, .ssh-toolbar-cancel {
@@ -194,15 +193,16 @@ class SelectionToolbar {
       return
     }
 
-    this._showIdle(range)
+    const anchor = this._getMouseAnchor(event, range)
+    this._showIdle(range, anchor)
   }
 
   /** Show State 1: search + pen + comment buttons */
-  _showIdle(range) {
+  _showIdle(range, anchor) {
     this._dismiss()
     this._state = 'idle'
 
-    const rect = range.getBoundingClientRect()
+    const rect = anchor || this._getRangeAnchorRect(range)
     const toolbar = this.document.createElement('div')
     toolbar.className = 'ssh-toolbar-root'
 
@@ -242,7 +242,6 @@ class SelectionToolbar {
 
     toolbar.append(search, searchDivider, pen, divider, comment, caret)
     this._position(toolbar, rect)
-    this.document.body.appendChild(toolbar)
     this._toolbarElm = toolbar
 
     this._attachDismissListeners()
@@ -370,13 +369,44 @@ class SelectionToolbar {
     }).catch(() => this._dismiss())
   }
 
-  /** Position toolbar centered above rect using fixed coords */
-  _position(toolbar, rect) {
-    const top = rect.top < 60
-      ? rect.bottom + 10
-      : rect.top - 46
+  /** Resolve the cursor anchor for a text selection mouseup */
+  _getMouseAnchor(event, range) {
+    if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY) && (event.clientX !== 0 || event.clientY !== 0)) {
+      return {
+        left: event.clientX,
+        top: event.clientY,
+        bottom: event.clientY,
+      }
+    }
 
-    toolbar.style.left = `${Math.round(rect.left + rect.width / 2)}px`
+    return this._getRangeAnchorRect(range)
+  }
+
+  /** Resolve a fallback viewport anchor from the selection range */
+  _getRangeAnchorRect(range) {
+    const rects = Array.from(range.getClientRects()).filter(rect => rect.width > 0 || rect.height > 0)
+    if (rects.length === 0) return range.getBoundingClientRect()
+
+    return rects.reduce((topLeftRect, rect) => {
+      if (rect.top < topLeftRect.top) return rect
+      if (rect.top === topLeftRect.top && rect.left < topLeftRect.left) return rect
+      return topLeftRect
+    })
+  }
+
+  /** Position toolbar at the cursor location using fixed coords */
+  _position(toolbar, rect) {
+    this.document.body.appendChild(toolbar)
+
+    const toolbarRect = toolbar.getBoundingClientRect()
+    const verticalOffset = 10
+    const top = rect.top < toolbarRect.height + verticalOffset
+      ? rect.bottom + verticalOffset
+      : rect.top - toolbarRect.height - verticalOffset
+    const maxLeft = Math.max(0, window.innerWidth - toolbarRect.width - 8)
+    const left = Math.min(Math.max(0, rect.left), maxLeft)
+
+    toolbar.style.left = `${Math.round(left)}px`
     toolbar.style.top = `${Math.round(top)}px`
   }
 
@@ -471,7 +501,6 @@ class SelectionToolbar {
 
     toolbar.append(icon, divider, input, save, cancel, caret)
     this._position(toolbar, anchorRect)
-    this.document.body.appendChild(toolbar)
     this._toolbarElm = toolbar
 
     this._attachDismissListeners({ skipSelectionChange: true })
