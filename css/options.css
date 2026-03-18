@@ -11,22 +11,19 @@ input[type="color"] {
 }
 
 .token {
-    margin: 0 0 12pt 0;
-    font-size: 2rem !important;
- /*   padding: 10px 0 10px 0.3em !important;*/
+    width: calc(25% - 8px);
+    margin: 4px;
+    font-size: 1.2rem !important;
     cursor: pointer;
-	/* border-radius: 0.5em !important; */
-
-    display: block;
+    display: inline-flex;
+    align-items: center;
     border: 2px solid #444;
     animation: unset !important;
 }
 
-/*
 .token > .close {
-    margin-right: 12px;
+    margin-left: auto;
 }
-*/
 
 .token .shortcut {
     font-size: 14pt;

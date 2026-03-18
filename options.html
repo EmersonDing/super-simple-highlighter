@@ -144,9 +144,9 @@
 					</div>
 
 					<!--Highlight Definitions-->
-					<h2>{{ 'options_tab_page_header_sites' | i18n }}</h2>
+					<h3>{{ 'options_tab_page_header_sites' | i18n }}</h3>
 
-					<ul class="list-unstyled">
+					<ul class="list-unstyled" style="display:flex; flex-wrap:wrap;">
 						<li ng-repeat="hd in highlightDefinitions" class="token well-sm {{highlightClassName}} {{hd.className}}"
 						 	ng-click="onClickStyle($index)">
 							<!--Number (index+1)-->
@@ -191,6 +191,7 @@
 								step="0.1" decimal-places="2" pin-handle="min" filter="alphaPercent"></div>
 						</div>
 
+						<h3>Comment setting</h3>
 						<!--Pen button default style-->
 						<div class="row" style="margin-top:10px">
 							<label>Pen button default style:
@@ -203,7 +204,7 @@
 
 
 					<!-- Buttons -->
-					<div class="row">
+					<div class="row" style="margin-top:2em">
 						<button type="button" class="btn btn-danger" ng-click="onClickResetToDefaultStyles()">
                         {{ 'reset_default_styles' | i18n }}
                     </button>
