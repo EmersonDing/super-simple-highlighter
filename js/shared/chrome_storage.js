@@ -126,6 +126,7 @@ ChromeStorage.KEYS = {
   FILE_ACCESS_REQUIRED_WARNING_DISMISSED: 'fileAccessRequiredWarningDismissed',
   UNSELECT_AFTER_HIGHLIGHT: 'unselectAfterHighlight',
   POPUP_HIGHLIGHT_TEXT_MAX_LENGTH: 'popupHighlightTextMaxLength',
+  ENABLE_TOOLBAR_COLOR_SELECTION: 'enableToolbarColorSelection',
 
   HIGHLIGHT: {
     SORT_BY: 'highlight_sort_by',
@@ -155,6 +156,7 @@ ChromeStorage.DEFAULTS = {
   [ChromeStorage.KEYS.FILE_ACCESS_REQUIRED_WARNING_DISMISSED]: false,
   [ChromeStorage.KEYS.UNSELECT_AFTER_HIGHLIGHT]: false,
   [ChromeStorage.KEYS.POPUP_HIGHLIGHT_TEXT_MAX_LENGTH]: 512,
+  [ChromeStorage.KEYS.ENABLE_TOOLBAR_COLOR_SELECTION]: true,
 
   [ChromeStorage.KEYS.HIGHLIGHT.SORT_BY]: 'time',
   [ChromeStorage.KEYS.HIGHLIGHT.INVERT_SORT]: false,
