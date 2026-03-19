@@ -354,9 +354,23 @@
 								<div class="row-buttons">
 									<span class="btn btn-danger btn-file">
 							    {{ 'advanced_database_import_button_text' | i18n }}
-									<input type="file" id="files"> 
+									<input type="file" id="files">
 									<!-- onchange="angular.element(this).scope().onFilesChange()"> -->
 							</span>
+								</div>
+							</li>
+
+							<li class="list-group-item">
+								<h5>Merge</h5>
+								<p class="text-warning">
+									<strong>Warning:</strong> back up your data before merging.
+									Merging imports highlights from a backup file while keeping your existing highlights.
+								</p>
+								<div class="row-buttons">
+									<span class="btn btn-default btn-file">
+										Merge from backup
+										<input type="file" id="mergeFiles">
+									</span>
 								</div>
 							</li>
 						</ul>
@@ -423,6 +437,7 @@
 	<script src="js/options/filters.js"></script>
 	<script src="js/options/controllers/styles.js"></script>
 	<script src="js/options/controllers/bookmarks.js"></script>
+	<script src="js/options/merge_utils.js"></script>
 	<script src="js/options/controllers/advanced.js"></script>
 	<script src="js/options/controllers/about.js"></script>
 </body>
