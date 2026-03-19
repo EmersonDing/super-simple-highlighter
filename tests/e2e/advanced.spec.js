@@ -19,6 +19,10 @@ const os = require('os')
 const EXTENSION_PATH = path.resolve(__dirname, '..', '..')
 const FIXTURE_PATH = path.resolve(__dirname, '..', 'fixtures')
 const DEFAULT_CLASSNAME = 'default-red-aa94e3d5-ab2f-4205-b74e-18ce31c7c0ce'
+const PAGE_1_TEXT_A = 'This is a test sentence'
+const PAGE_1_TEXT_B = 'highlighting and'
+const PAGE_1_TEXT_C = 'multiple wrapped lines'
+const PAGE_2_TEXT_A = 'Second page'
 
 let server
 let port
@@ -66,34 +70,83 @@ test.afterAll(async () => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Open a test page, create a highlight via the service worker, then close the page. */
-async function createHighlightOnPage(pageUrl, selectionText) {
+async function selectTextOnPage(page, selectionText) {
+  await page.evaluate((text) => {
+    const target = document.getElementById('target')
+    const content = target.textContent
+    const start = content.indexOf(text)
+
+    if (start === -1) {
+      throw new Error(`Selection text not found in fixture: ${text}`)
+    }
+
+    const textNodes = []
+    const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT)
+
+    while (walker.nextNode()) {
+      textNodes.push(walker.currentNode)
+    }
+
+    const resolveOffset = (offset) => {
+      let remaining = offset
+
+      for (const node of textNodes) {
+        const length = node.textContent.length
+        if (remaining <= length) {
+          return { node, offset: remaining }
+        }
+        remaining -= length
+      }
+
+      const lastNode = textNodes[textNodes.length - 1]
+      return { node: lastNode, offset: lastNode.textContent.length }
+    }
+
+    const startPoint = resolveOffset(start)
+    const endPoint = resolveOffset(start + text.length)
+
+    const range = document.createRange()
+    range.setStart(startPoint.node, startPoint.offset)
+    range.setEnd(endPoint.node, endPoint.offset)
+    const sel = window.getSelection()
+    sel.removeAllRanges()
+    sel.addRange(range)
+  }, selectionText)
+}
+
+/** Open a test page, create one or more exact-substring highlights, then close the page. */
+async function createHighlightsOnPage(pageUrl, selectionTexts) {
   const page = await context.newPage()
   await page.goto(pageUrl)
   await page.waitForLoadState('domcontentloaded')
 
-  // Set a real DOM selection so the content script can report a non-collapsed XRange
-  await page.evaluate((len) => {
-    const target = document.getElementById('target')
-    const range = document.createRange()
-    range.setStart(target.firstChild, 0)
-    range.setEnd(target.firstChild, len)
-    const sel = window.getSelection()
-    sel.removeAllRanges()
-    sel.addRange(range)
-  }, selectionText.length)
+  for (let index = 0; index < selectionTexts.length; index += 1) {
+    const selectionText = selectionTexts[index]
+    await selectTextOnPage(page, selectionText)
 
-  await sw.evaluate(async ({ pageUrl, className, selectionText }) => {
-    const [tab] = await chrome.tabs.query({ url: pageUrl })
-    await ChromeContextMenusHandler.onClicked({
-      menuItemId: `create_highlight.${className}`,
-      editable: false,
-      selectionText,
-    }, tab)
-  }, { pageUrl, className: DEFAULT_CLASSNAME, selectionText })
+    await sw.evaluate(async ({ pageUrl, className, selectionText }) => {
+      const [tab] = await chrome.tabs.query({ url: pageUrl })
+      await ChromeContextMenusHandler.onClicked({
+        menuItemId: `create_highlight.${className}`,
+        editable: false,
+        selectionText,
+      }, tab)
+    }, { pageUrl, className: DEFAULT_CLASSNAME, selectionText })
 
-  await page.waitForSelector('mark', { timeout: 5000 })
+    await expect(page.locator('mark')).toHaveCount(index + 1, { timeout: 5000 })
+  }
+
   await page.close()
+}
+
+async function createHighlightOnPage(pageUrl, selectionText) {
+  await createHighlightsOnPage(pageUrl, [selectionText])
+}
+
+async function getPageHighlightTexts(optionsPage) {
+  return optionsPage.locator('.page-text-list-item').evaluateAll(elements => {
+    return elements.map(el => el.textContent.replace(/\s+/g, ' ').replace(/💬/g, '').trim())
+  })
 }
 
 /** Destroy and recreate the PouchDB database via the service worker. */
@@ -132,7 +185,7 @@ test('export downloads a backup file with a valid header', async () => {
   await clearDB()
 
   const pageUrl = `http://127.0.0.1:${port}/test-page.html`
-  await createHighlightOnPage(pageUrl, 'Export test highlight')
+  await createHighlightOnPage(pageUrl, PAGE_1_TEXT_A)
 
   const extId = sw.url().split('/')[2]
   const content = await exportDB(extId)
@@ -151,7 +204,7 @@ test('import restores highlights from a backup file', async () => {
   await clearDB()
 
   const pageUrl = `http://127.0.0.1:${port}/test-page.html`
-  await createHighlightOnPage(pageUrl, 'Import restore test')
+  await createHighlightOnPage(pageUrl, PAGE_1_TEXT_B)
 
   const extId = sw.url().split('/')[2]
 
@@ -191,7 +244,58 @@ test('import restores highlights from a backup file', async () => {
   }
 })
 
-test('merge adds new highlights and skips duplicates (two backup files)', async () => {
+test('merge combines same-page backups and skips duplicates', async () => {
+  await clearDB()
+
+  const extId = sw.url().split('/')[2]
+  const pageUrl = `http://127.0.0.1:${port}/test-page.html`
+
+  // backup1 = {A, C}
+  await createHighlightsOnPage(pageUrl, [PAGE_1_TEXT_A, PAGE_1_TEXT_C])
+  const backup1Content = await exportDB(extId)
+
+  // backup2 = {A, B}
+  await clearDB()
+  await createHighlightsOnPage(pageUrl, [PAGE_1_TEXT_A, PAGE_1_TEXT_B])
+  const backup2Content = await exportDB(extId)
+
+  const tmpDir = os.tmpdir()
+  const backup1Path = path.join(tmpDir, `ssh_merge_same_page_backup1_${Date.now()}.ldjson`)
+  const backup2Path = path.join(tmpDir, `ssh_merge_same_page_backup2_${Date.now()}.ldjson`)
+  fs.writeFileSync(backup1Path, backup1Content)
+  fs.writeFileSync(backup2Path, backup2Content)
+
+  try {
+    // Start from backup1 state: {A, C}
+    await clearDB()
+    await createHighlightsOnPage(pageUrl, [PAGE_1_TEXT_A, PAGE_1_TEXT_C])
+
+    const optionsPage = await context.newPage()
+    await optionsPage.goto(`chrome-extension://${extId}/options.html`)
+    await optionsPage.waitForLoadState('domcontentloaded')
+    await optionsPage.click('a[href="#advanced"]')
+
+    optionsPage.on('dialog', dialog => dialog.accept())
+    const navigationPromise = optionsPage.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 })
+    await optionsPage.locator('#mergeFiles').setInputFiles(backup2Path)
+    await navigationPromise
+
+    await optionsPage.click('a[href="#bookmarks"]')
+    await expect(optionsPage.locator('.page')).toHaveCount(1, { timeout: 8000 })
+
+    await optionsPage.locator('.glyphicon-resize-vertical').click()
+    await expect(optionsPage.locator('.page-text-list-item')).toHaveCount(3, { timeout: 8000 })
+    const highlightTexts = await getPageHighlightTexts(optionsPage)
+    expect(highlightTexts).toEqual(expect.arrayContaining([PAGE_1_TEXT_A, PAGE_1_TEXT_B, PAGE_1_TEXT_C]))
+
+    await optionsPage.close()
+  } finally {
+    fs.unlinkSync(backup1Path)
+    fs.unlinkSync(backup2Path)
+  }
+})
+
+test('merge adds new highlights from another page and skips duplicates', async () => {
   await clearDB()
 
   const extId = sw.url().split('/')[2]
@@ -199,11 +303,11 @@ test('merge adds new highlights and skips duplicates (two backup files)', async 
   const pageUrl2 = `http://127.0.0.1:${port}/test-page-2.html`
 
   // --- Build backup1: DB contains only page-1's highlight ---
-  await createHighlightOnPage(pageUrl1, 'Merge highlight A')
+  await createHighlightOnPage(pageUrl1, PAGE_1_TEXT_A)
   const backup1Content = await exportDB(extId)
 
   // --- Build backup2: DB contains page-1 + page-2 highlights ---
-  await createHighlightOnPage(pageUrl2, 'Merge highlight B')
+  await createHighlightOnPage(pageUrl2, PAGE_2_TEXT_A)
   const backup2Content = await exportDB(extId)
 
   // Write both backup files to temp paths
@@ -216,7 +320,7 @@ test('merge adds new highlights and skips duplicates (two backup files)', async 
   try {
     // --- Reset: DB has only page-1's highlight ---
     await clearDB()
-    await createHighlightOnPage(pageUrl1, 'Merge highlight A')
+    await createHighlightOnPage(pageUrl1, PAGE_1_TEXT_A)
 
     // --- Merge test 1: merge backup2 (page-1 + page-2) into DB (page-1 only) ---
     // page-2's highlight is new → gets added; page-1's highlight is a duplicate → skipped
