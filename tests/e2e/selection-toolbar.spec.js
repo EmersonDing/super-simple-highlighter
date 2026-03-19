@@ -339,3 +339,19 @@ test('options page has hover color picker toggle in Comment setting panel', asyn
 
   await optionsPage.close()
 })
+
+test('hovering pen button for 600ms shows color picker popup', async () => {
+  const { page } = await setupPage()
+  await selectText(page)
+  await page.waitForSelector('.ssh-toolbar-root', { timeout: 3000 })
+
+  // Hover over the pen button and wait longer than the 500ms delay
+  await page.hover('.ssh-toolbar-pen')
+  await page.waitForSelector('.ssh-toolbar-picker', { timeout: 2000 })
+
+  const picker = await page.$('.ssh-toolbar-picker')
+  expect(picker).toBeTruthy()
+
+  // Swatch content is verified in Task 4; this test only checks the popup appears
+  await page.close()
+})
