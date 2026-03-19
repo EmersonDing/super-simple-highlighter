@@ -40,6 +40,7 @@ test.beforeAll(async () => {
     args: [
       `--disable-extensions-except=${EXTENSION_PATH}`,
       `--load-extension=${EXTENSION_PATH}`,
+      '--window-position=800,0',
     ],
   })
 
