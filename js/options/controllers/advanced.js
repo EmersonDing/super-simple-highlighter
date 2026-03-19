@@ -29,13 +29,15 @@ angular.module('advancedControllers', []).controller('advanced', ["$scope", func
 			for (const func of [
 				this.onClickExport,
 				this.onClickOptimize,
-				this.onFilesChange
+				this.onFilesChange,
+				this.onMergeFilesChange
 			]) {
 				this.scope[func.name] = func.bind(this)
 			}
 
 			// TODO: move this to html
 			document.querySelector('#files').addEventListener('change', this.onFilesChange)
+			document.querySelector('#mergeFiles').addEventListener('change', this.onMergeFilesChange.bind(this))
 
 			this.scope.optimizing = false
 			this.updateStorageEstimate()
@@ -151,6 +153,100 @@ angular.module('advancedControllers', []).controller('advanced', ["$scope", func
 			// Read in the image file as a data URL.
 			reader.readAsText(file, "utf-8");
 			// reader.readAsDataURL(file);
+		}
+
+		/**
+		 * Handle file selection for the Merge feature.
+		 * Merges highlights from a backup file with the current DB, deduplicating by content.
+		 */
+		async onMergeFilesChange() {
+			const file = event.target.files[0]
+			if (!file) return
+
+			const ldjson = await file.text()
+			const lines = ldjson.split('\n').filter(line => line.length > 0)
+
+			// Validate header
+			let header
+			try {
+				header = JSON.parse(lines[0])
+			} catch (e) {
+				alert('Error merging backup\n\nStatus: 400\nMessage: Invalid file (bad JSON)')
+				return
+			}
+			if (header.magic !== Controller.MAGIC || header.version !== 1) {
+				alert('Error merging backup\n\nStatus: 403\nMessage: Invalid file')
+				return
+			}
+
+			// Remaining lines: storageItems on line 2, rest is DB stream
+			const backupStream = lines.slice(2).join('\n')
+
+			let tmpDB = null
+			let mergeOutDB = null
+
+			try {
+				// Step 1: Extract backup CREATE docs from a temporary PouchDB
+				tmpDB = new PouchDB('_mergetmpdb', { storage: 'temporary' })
+				await tmpDB.load(backupStream)
+				const allBackupRows = (await tmpDB.allDocs({ include_docs: true })).rows
+				const backupDocs = allBackupRows
+					.map(r => r.doc)
+					.filter(d => d && d.verb === DB.DOCUMENT.VERB.CREATE)
+				await tmpDB.destroy()
+				tmpDB = null
+
+				// Step 2: Get net-active CREATE docs from current DB
+				const allCurrentDocs = await new DB().getAllDocuments()
+				const deletedIds = new Set(
+					allCurrentDocs
+						.filter(d => d.verb === DB.DOCUMENT.VERB.DELETE)
+						.map(d => d[DB.DOCUMENT.NAME.CORRESPONDING_DOC_ID])
+				)
+				const currentDocs = allCurrentDocs.filter(
+					d => d.verb === DB.DOCUMENT.VERB.CREATE && !deletedIds.has(d._id)
+				)
+
+				// Step 3: Fetch current storage items (style definitions — do NOT merge from backup)
+				const currentStorageItems = await new ChromeHighlightStorage().getAll({ defaults: false })
+
+				// Step 4: Merge
+				const mergedDocs = mergeHighlightDocs(currentDocs, backupDocs)
+
+				// Step 5: Confirm with user
+				const confirmed = window.confirm(
+					`Merge will grow from ${currentDocs.length} → ${mergedDocs.length} highlights. Continue?`
+				)
+				if (!confirmed) return
+
+				// Step 6: Build merged ldjson via a fresh tmpDB dump
+				mergeOutDB = new PouchDB('_mergeout', { storage: 'temporary' })
+				await mergeOutDB.bulkDocs(
+					mergedDocs.map(d => { const c = { ...d }; delete c._rev; return c })
+				)
+				const stream = new window.memorystream()
+				let mergedStream = ''
+				stream.on('data', chunk => { mergedStream += chunk.toString() })
+				await mergeOutDB.dump(stream)
+				await mergeOutDB.destroy()
+				mergeOutDB = null
+
+				const mergedLdjson = [
+					JSON.stringify({ magic: Controller.MAGIC, version: 1 }),
+					JSON.stringify(currentStorageItems),
+					mergedStream,
+				].join('\n')
+
+				// Step 7: Load merged DB (replaces current DB) and reload page
+				await new DB().loadDB(mergedLdjson)
+				location.reload()
+
+			} catch (err) {
+				// Cleanup any in-flight tmpDBs
+				if (tmpDB) await tmpDB.destroy().catch(() => {})
+				if (mergeOutDB) await mergeOutDB.destroy().catch(() => {})
+				alert(`Error merging backup\n\nStatus: ${err.status || 500}\nMessage: ${err.message || err}`)
+			}
 		}
 
 		onClickExport() {
