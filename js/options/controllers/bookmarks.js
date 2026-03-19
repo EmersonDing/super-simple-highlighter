@@ -580,7 +580,22 @@ angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", fu
     TIMEOUT: 500,
   }
 
-  // init
-  // unhandled promise
-  new Controller($scope).init()
+  // Defer heavy DB init until the bookmarks tab is actually shown
+  const controller = new Controller($scope)
+  let initialized = false
+
+  const onTabShown = () => {
+    if (!initialized) {
+      initialized = true
+      controller.init() // unhandled promise
+    }
+  }
+
+  // Bootstrap 3 fires tab events via jQuery trigger(), not native DOM events
+  $('a[href="#bookmarks"]').on('shown.bs.tab', onTabShown)
+
+  // If bookmarks tab is already active on page load, init immediately
+  if (document.querySelector('#bookmarks.active')) {
+    onTabShown()
+  }
 }])
