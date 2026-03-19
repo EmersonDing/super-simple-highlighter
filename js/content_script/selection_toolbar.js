@@ -396,7 +396,7 @@ class SelectionToolbar {
       swatch.addEventListener('click', (e) => {
         e.stopPropagation()
         this._onPickerSwatchClick(def, range, mode)
-      })
+      }, { once: true })
       popup.appendChild(swatch)
     }
 
