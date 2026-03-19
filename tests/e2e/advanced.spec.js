@@ -72,6 +72,17 @@ async function createHighlightOnPage(pageUrl, selectionText) {
   await page.goto(pageUrl)
   await page.waitForLoadState('domcontentloaded')
 
+  // Set a real DOM selection so the content script can report a non-collapsed XRange
+  await page.evaluate((len) => {
+    const target = document.getElementById('target')
+    const range = document.createRange()
+    range.setStart(target.firstChild, 0)
+    range.setEnd(target.firstChild, len)
+    const sel = window.getSelection()
+    sel.removeAllRanges()
+    sel.addRange(range)
+  }, selectionText.length)
+
   await sw.evaluate(async ({ pageUrl, className, selectionText }) => {
     const [tab] = await chrome.tabs.query({ url: pageUrl })
     await ChromeContextMenusHandler.onClicked({

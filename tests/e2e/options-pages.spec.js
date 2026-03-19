@@ -64,6 +64,17 @@ test('pages tab shows page entry and highlight text after a highlight is created
   await contentPage.goto(pageUrl)
   await contentPage.waitForLoadState('domcontentloaded')
 
+  // Set a real DOM selection so the content script can report a non-collapsed XRange
+  await contentPage.evaluate((len) => {
+    const target = document.getElementById('target')
+    const range = document.createRange()
+    range.setStart(target.firstChild, 0)
+    range.setEnd(target.firstChild, len)
+    const sel = window.getSelection()
+    sel.removeAllRanges()
+    sel.addRange(range)
+  }, SELECTION_TEXT.length)
+
   await sw.evaluate(async ({ pageUrl, className, selectionText }) => {
     const [tab] = await chrome.tabs.query({ url: pageUrl })
     await ChromeContextMenusHandler.onClicked({
