@@ -426,6 +426,9 @@ test('moving mouse off pen button before 500ms does not show picker', async () =
   await page.mouse.move(0, 0) // move away
   await page.waitForTimeout(400) // wait past original 500ms mark
 
+  // Toolbar should still be visible (mouse moved, not dismissed)
+  expect(await page.$('.ssh-toolbar-root')).toBeTruthy()
+
   const picker = await page.$('.ssh-toolbar-picker')
   expect(picker).toBeNull()
 
@@ -433,29 +436,30 @@ test('moving mouse off pen button before 500ms does not show picker', async () =
 })
 
 test('hover color picker does not appear when disabled in options', async () => {
-  // Disable the feature via storage
   await sw.evaluate(async () => {
     await chrome.storage.sync.set({ enableToolbarColorSelection: false })
   })
 
-  const { page } = await setupPage()
-  await selectText(page)
-  await page.waitForSelector('.ssh-toolbar-root', { timeout: 3000 })
+  try {
+    const { page } = await setupPage()
+    await selectText(page)
+    await page.waitForSelector('.ssh-toolbar-root', { timeout: 3000 })
 
-  await page.hover('.ssh-toolbar-pen')
-  await page.waitForTimeout(700) // past the 500ms delay
+    await page.hover('.ssh-toolbar-pen')
+    await page.waitForTimeout(700) // past the 500ms delay
 
-  const picker = await page.$('.ssh-toolbar-picker')
-  expect(picker).toBeNull()
+    const picker = await page.$('.ssh-toolbar-picker')
+    expect(picker).toBeNull()
 
-  // Direct pen click should still work (falls back to original behavior)
-  await page.click('.ssh-toolbar-pen')
-  await page.waitForSelector('mark', { timeout: 3000 })
+    // Direct pen click should still work (falls back to original behavior)
+    await page.click('.ssh-toolbar-pen')
+    await page.waitForSelector('mark', { timeout: 3000 })
 
-  // Re-enable for other tests
-  await sw.evaluate(async () => {
-    await chrome.storage.sync.set({ enableToolbarColorSelection: true })
-  })
-
-  await page.close()
+    await page.close()
+  } finally {
+    // Re-enable for other tests — runs even if assertions fail
+    await sw.evaluate(async () => {
+      await chrome.storage.sync.set({ enableToolbarColorSelection: true })
+    })
+  }
 })
