@@ -406,6 +406,7 @@ class SelectionToolbar {
 
   _onPickerSwatchClick(def, range, mode) {
     if (mode === 'pen') {
+      if (!def.className) { this._dismiss(); return }
       this._activeClassName = def.className
       this._activeBgColor = (def.style || {})['background-color'] || '#ffd2AA'
 
@@ -432,6 +433,8 @@ class SelectionToolbar {
         if (highlightId) this._showCommentInput(highlightId)
         else this._dismiss()
       }).catch(() => this._dismiss())
+    } else {
+      this._dismiss()
     }
   }
 
