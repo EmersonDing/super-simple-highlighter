@@ -159,7 +159,7 @@ angular.module('advancedControllers', []).controller('advanced', ["$scope", func
 		 * Handle file selection for the Merge feature.
 		 * Merges highlights from a backup file with the current DB, deduplicating by content.
 		 */
-		async onMergeFilesChange() {
+		async onMergeFilesChange(event) {
 			const file = event.target.files[0]
 			if (!file) return
 
@@ -186,8 +186,9 @@ angular.module('advancedControllers', []).controller('advanced', ["$scope", func
 			let mergeOutDB = null
 
 			try {
+				const ts = Date.now()
 				// Step 1: Extract backup CREATE docs from a temporary PouchDB
-				tmpDB = new PouchDB('_mergetmpdb', { storage: 'temporary' })
+				tmpDB = new PouchDB(`_mergetmpdb_${ts}`, { storage: 'temporary' })
 				await tmpDB.load(backupStream)
 				const allBackupRows = (await tmpDB.allDocs({ include_docs: true })).rows
 				const backupDocs = allBackupRows
@@ -220,7 +221,7 @@ angular.module('advancedControllers', []).controller('advanced', ["$scope", func
 				if (!confirmed) return
 
 				// Step 6: Build merged ldjson via a fresh tmpDB dump
-				mergeOutDB = new PouchDB('_mergeout', { storage: 'temporary' })
+				mergeOutDB = new PouchDB(`_mergeout_${ts}`, { storage: 'temporary' })
 				await mergeOutDB.bulkDocs(
 					mergedDocs.map(d => { const c = { ...d }; delete c._rev; return c })
 				)
