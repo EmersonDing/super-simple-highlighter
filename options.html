@@ -223,6 +223,25 @@
 						</div>
 					</div>
 
+
+					<!-- Panel: AI -->
+					<div class="panel panel-default">
+						<div class="panel-heading">AI</div>
+						<div class="panel-body">
+							<div class="form-group" style="margin-bottom:0;">
+								<label class="control-label" style="font-weight:normal;">AI search target:
+									<select class="form-control input-sm" style="display:inline-block; width:auto; margin-left:8px;"
+										ng-model="options.aiProvider">
+										<option value="gemini">Gemini</option>
+										<option value="gpt">ChatGPT</option>
+										<option value="claude">Claude</option>
+									</select>
+								</label>
+							</div>
+							<div class="help-block" style="margin-bottom:0; margin-top:8px;">Controls the new AI button in the floating selection toolbar.</div>
+						</div>
+					</div>
+
 					<!-- Reset button -->
 					<div class="row" style="margin-top: 8px;">
 						<button type="button" class="btn btn-danger" ng-click="onClickResetToDefaultStyles()">

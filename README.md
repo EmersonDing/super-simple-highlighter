@@ -11,6 +11,7 @@ When you select text on a page, the extension shows a floating toolbar positione
 - **Google search**: Open a new tab to search Google for the selected text
 - **Highlight**: Save the selection with your active highlight color
 - **Comment & highlight**: Create a highlight and attach a comment to it for later review
+- **AI search**: Open a new tab to search your configured AI target with the selected text
 
 ![Selection toolbar screenshot](resources/selection-toolbar.png)
 
@@ -20,7 +21,7 @@ When you select text on a page, the extension shows a floating toolbar positione
 - **PING rejection fix**: Content script injection now handles rejected PING messages correctly, allowing the inject-then-retry flow to work
 - **PouchDB MV3 CSP fix**: Replaced `db.query()` (map/reduce) with `db.allDocs()` + in-memory filtering to avoid `Function()` calls blocked by MV3's strict Content Security Policy
 - **E2E tests**: Added Playwright-based end-to-end tests for highlight creation and persistence
-- **Selection toolbar**: Added quick actions for Google search, highlight creation, and highlight comments, now positioned near the cursor location
+- **Selection toolbar**: Added quick actions for Google search, highlight creation, highlight comments, and AI search, positioned near the cursor location with the AI action as the fourth button
 
 ## Installation
 

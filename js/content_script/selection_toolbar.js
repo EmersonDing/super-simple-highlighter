@@ -17,49 +17,40 @@
 
 const HIGHLIGHT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M6 26 L24 8" stroke="#3a3a3c" stroke-width="5.5" stroke-linecap="round"/><rect x="3" y="25" width="7" height="4" rx="1" fill="#3a3a3c" transform="rotate(-45 6 26)"/></svg>`
 const GOOGLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20.18 12.27c0-.62-.06-1.21-.16-1.77H12v3.35h4.58a3.92 3.92 0 0 1-1.7 2.57v2.19h2.75c1.61-1.49 2.55-3.69 2.55-6.34Z" fill="#e5e5ea"/><path d="M12 20.5c2.22 0 4.08-.74 5.44-2.01l-2.75-2.19c-.74.49-1.67.8-2.69.8-2.07 0-3.82-1.39-4.44-3.25H4.72v2.19A8.2 8.2 0 0 0 12 20.5Z" fill="#e5e5ea"/><path d="M7.56 13.85A4.92 4.92 0 0 1 7.3 12c0-.64.1-1.26.26-1.85V7.96H4.72A8.2 8.2 0 0 0 3.8 12c0 1.33.31 2.58.92 3.69l2.84-1.84Z" fill="#e5e5ea"/><path d="M12 6.9c1.2 0 2.27.41 3.12 1.22l2.34-2.34C16.09 4.5 14.22 3.5 12 3.5a8.2 8.2 0 0 0-7.28 4.46l2.84 2.19C8.18 8.29 9.93 6.9 12 6.9Z" fill="#e5e5ea"/></svg>`
+const AI_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M16 3 18.8 10.2 26 13 18.8 15.8 16 23 13.2 15.8 6 13l7.2-2.8L16 3Z" fill="#e5e5ea"/><path d="M24.5 19 25.8 22.2 29 23.5 25.8 24.8 24.5 28 23.2 24.8 20 23.5 23.2 22.2 24.5 19Z" fill="#e5e5ea" opacity="0.8"/><circle cx="10" cy="23" r="2" fill="#e5e5ea" opacity="0.75"/></svg>`
 const COMMENT_SVG_16 = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32" fill="none"><rect x="3" y="2" width="26" height="21" rx="7" fill="#e5e5ea"/><path d="M10 23 L9 30 L18 23" fill="#e5e5ea"/></svg>`
 const COMMENT_SVG_13 = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 32 32" fill="none"><rect x="3" y="2" width="26" height="21" rx="7" fill="#e5e5ea"/><path d="M10 23 L9 30 L18 23" fill="#e5e5ea"/></svg>`
 
-/**
- * Floating selection toolbar
- * Appears above text selections with search, pen (highlight), and comment buttons.
- *
- * @class SelectionToolbar
- */
 class SelectionToolbar {
-  /**
-   * @param {StyleSheetManager} styleSheetManager
-   * @param {Document} [doc=window.document]
-   */
   constructor(styleSheetManager, doc = window.document) {
     this.styleSheetManager = styleSheetManager
     this.document = doc
     this._toolbarElm = null
     this._activeClassName = null
     this._activeBgColor = null
-    this._state = 'hidden' // 'hidden' | 'idle' | 'comment'
+    this._state = 'hidden'
     this._dismissListeners = []
     this._pickerDefinitions = []
     this._hoverColorPickerEnabled = true
+    this._aiProvider = ChromeStorage.DEFAULTS[ChromeStorage.KEYS.AI_PROVIDER]
+    this._toolbarSettingsPromise = Promise.resolve()
     this._onMouseUpBound = this._onMouseUp.bind(this)
   }
 
-  /**
-   * Initialize: inject styles, resolve active style, attach selection listener
-   * @returns {SelectionToolbar}
-   */
   init() {
     this._injectStyles()
     this._resolveActiveClassName()
-
-    // Read hover-picker enabled flag once; refresh via storage change listener
-    new ChromeStorage().get(ChromeStorage.KEYS.ENABLE_TOOLBAR_COLOR_SELECTION)
-      .then(enabled => { this._hoverColorPickerEnabled = enabled })
-      .catch(() => {})
+    this._toolbarSettingsPromise = this._resolveToolbarSettings()
 
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === 'sync' && changes[ChromeStorage.KEYS.ENABLE_TOOLBAR_COLOR_SELECTION]) {
+      if (area !== 'sync') return
+
+      if (changes[ChromeStorage.KEYS.ENABLE_TOOLBAR_COLOR_SELECTION]) {
         this._hoverColorPickerEnabled = changes[ChromeStorage.KEYS.ENABLE_TOOLBAR_COLOR_SELECTION].newValue
+      }
+
+      if (changes[ChromeStorage.KEYS.AI_PROVIDER]) {
+        this._aiProvider = this._normalizeAIProvider(changes[ChromeStorage.KEYS.AI_PROVIDER].newValue)
       }
     })
 
@@ -71,9 +62,6 @@ class SelectionToolbar {
     return this
   }
 
-  // ── Private ────────────────────────────────────────────────────────────────
-
-  /** Inject toolbar CSS as a <style> element */
   _injectStyles() {
     const style = this.document.createElement('style')
     style.textContent = `
@@ -92,7 +80,7 @@ class SelectionToolbar {
         white-space: nowrap;
       }
       .ssh-toolbar-root * { box-sizing: border-box; }
-      .ssh-toolbar-search, .ssh-toolbar-pen, .ssh-toolbar-comment, .ssh-toolbar-save, .ssh-toolbar-cancel {
+      .ssh-toolbar-search, .ssh-toolbar-ai, .ssh-toolbar-pen, .ssh-toolbar-comment, .ssh-toolbar-save, .ssh-toolbar-cancel {
         all: initial;
         cursor: pointer;
         border-radius: 11px;
@@ -105,6 +93,7 @@ class SelectionToolbar {
         border: none;
       }
       .ssh-toolbar-search,
+      .ssh-toolbar-ai,
       .ssh-toolbar-comment { background: transparent; color: #ccc; }
       .ssh-toolbar-save {
         all: initial;
@@ -184,7 +173,20 @@ class SelectionToolbar {
     this.document.head.appendChild(style)
   }
 
-  /** Load and cache the active highlight class name */
+  _resolveToolbarSettings() {
+    return new ChromeStorage().get([
+      ChromeStorage.KEYS.ENABLE_TOOLBAR_COLOR_SELECTION,
+      ChromeStorage.KEYS.AI_PROVIDER,
+    ]).then(items => {
+      this._hoverColorPickerEnabled = items[ChromeStorage.KEYS.ENABLE_TOOLBAR_COLOR_SELECTION]
+      this._aiProvider = this._normalizeAIProvider(items[ChromeStorage.KEYS.AI_PROVIDER])
+    }).catch(() => {})
+  }
+
+  _normalizeAIProvider(value) {
+    return ['gemini', 'gpt', 'claude'].includes(value) ? value : 'gemini'
+  }
+
   _resolveActiveClassName() {
     new ChromeHighlightStorage().getAll().then(({ highlightDefinitions, penButtonClassName }) => {
       if (!highlightDefinitions || highlightDefinitions.length === 0) return
@@ -210,9 +212,7 @@ class SelectionToolbar {
     }).catch(() => {})
   }
 
-  /** mouseup handler — show toolbar if selection is non-empty */
   _onMouseUp(event) {
-    // Ignore clicks inside the toolbar itself
     if (this._toolbarElm && this._toolbarElm.contains(event.target)) return
 
     const sel = this.document.getSelection()
@@ -228,10 +228,17 @@ class SelectionToolbar {
     }
 
     const anchor = this._getMouseAnchor(event, range)
-    this._showIdle(range, anchor)
+    this._toolbarSettingsPromise.finally(() => {
+      const currentSelection = this.document.getSelection()
+      if (!currentSelection || currentSelection.isCollapsed || currentSelection.rangeCount === 0) {
+        this._dismiss()
+        return
+      }
+
+      this._showIdle(range, anchor)
+    })
   }
 
-  /** Show State 1: search + pen + comment buttons */
   _showIdle(range, anchor) {
     this._dismiss()
     this._state = 'idle'
@@ -240,53 +247,75 @@ class SelectionToolbar {
     const toolbar = this.document.createElement('div')
     toolbar.className = 'ssh-toolbar-root'
 
-    // Search button
     const search = this.document.createElement('button')
     search.className = 'ssh-toolbar-search'
     search.title = 'Search Google'
     search.innerHTML = GOOGLE_SVG
     search.addEventListener('click', () => this._onSearchClick(range), { once: true })
 
-    // Divider
     const searchDivider = this.document.createElement('span')
     searchDivider.className = 'ssh-toolbar-divider'
 
-    // Pen button
+    const ai = this.document.createElement('button')
+    ai.className = 'ssh-toolbar-ai'
+    ai.title = `Search ${this._getAIProviderLabel()} AI`
+    ai.innerHTML = AI_SVG
+    ai.addEventListener('click', () => this._onAIClick(range), { once: true })
+
     const pen = this.document.createElement('button')
     pen.className = 'ssh-toolbar-pen'
     pen.title = 'Highlight'
     pen.innerHTML = HIGHLIGHT_SVG
     pen.style.background = this._activeBgColor || '#ffffaa'
 
-    // Divider
     const divider = this.document.createElement('span')
     divider.className = 'ssh-toolbar-divider'
 
-    // Comment button
     const comment = this.document.createElement('button')
     comment.className = 'ssh-toolbar-comment'
     comment.title = 'Comment & Highlight'
     comment.innerHTML = COMMENT_SVG_16
 
-    // Caret
+    const aiDivider = this.document.createElement('span')
+    aiDivider.className = 'ssh-toolbar-divider'
+
     const caret = this.document.createElement('span')
     caret.className = 'ssh-toolbar-caret'
 
     if (this._hoverColorPickerEnabled && this._pickerDefinitions.length > 0) {
       const penWrapper = this._createHoverZone(pen, range, 'pen')
       const commentWrapper = this._createHoverZone(comment, range, 'comment')
-      // NOTE: do NOT attach click listeners directly on pen/comment here —
-      // _createHoverZone handles all click wiring for those buttons.
-      toolbar.append(search, searchDivider, penWrapper, divider, commentWrapper, caret)
+      toolbar.append(search, searchDivider, penWrapper, divider, commentWrapper, aiDivider, ai, caret)
     } else {
       pen.addEventListener('click', () => this._onPenClick(range), { once: true })
       comment.addEventListener('click', () => this._onCommentClick(range), { once: true })
-      toolbar.append(search, searchDivider, pen, divider, comment, caret)
+      toolbar.append(search, searchDivider, pen, divider, comment, aiDivider, ai, caret)
     }
     this._position(toolbar, rect)
     this._toolbarElm = toolbar
 
     this._attachDismissListeners()
+  }
+
+  _getAIProviderLabel() {
+    return {
+      gemini: 'Gemini',
+      gpt: 'ChatGPT',
+      claude: 'Claude',
+    }[this._aiProvider] || 'Gemini'
+  }
+
+  _buildAIUrl(text) {
+    const encodedText = encodeURIComponent(text)
+    switch (this._aiProvider) {
+      case 'gpt':
+        return `https://chatgpt.com/?q=${encodedText}`
+      case 'claude':
+        return `https://claude.ai/new?q=${encodedText}`
+      case 'gemini':
+      default:
+        return `https://www.google.com/search?q=${encodedText}&udm=50`
+    }
   }
 
   /** Expand toolbar to State 2: comment input */
@@ -477,6 +506,24 @@ class SelectionToolbar {
     ChromeRuntimeHandler.sendMessage({
       id: ChromeRuntimeHandler.MESSAGE_ID.OPEN_URL,
       url: `https://www.google.com/search?q=${encodeURIComponent(text)}`,
+    }).then(opened => {
+      if (opened) {
+        this._dismiss()
+      }
+    }).catch(console.error)
+  }
+
+  /** AI click: open the configured AI provider for the selected text */
+  _onAIClick(range) {
+    const text = range.toString().trim()
+    if (!text) {
+      this._dismiss()
+      return
+    }
+
+    ChromeRuntimeHandler.sendMessage({
+      id: ChromeRuntimeHandler.MESSAGE_ID.OPEN_URL,
+      url: this._buildAIUrl(text),
     }).then(opened => {
       if (opened) {
         this._dismiss()
