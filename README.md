@@ -4,6 +4,8 @@ This is a fork of [Super Simple Highlighter](https://github.com/nicholasgasior/s
 
 A Chrome extension for highlighting text on web pages, with automatic restoration of highlights on each page revisit.
 
+The extension now uses a context-first file layout: runtime code lives under `src/`, and icons/images/fonts live under `assets/`.
+
 ## Selection toolbar
 
 When you select text on a page, the extension shows a floating toolbar positioned near the cursor location for quick actions:

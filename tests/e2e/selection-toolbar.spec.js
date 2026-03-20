@@ -419,7 +419,7 @@ test('commented highlight dot and tooltip restored after page reload', async () 
 test('options page has hover color picker toggle in Comment setting panel', async () => {
   const extId = new URL(sw.url()).hostname
   const optionsPage = await context.newPage()
-  await optionsPage.goto(`chrome-extension://${extId}/options.html`)
+  await optionsPage.goto(`chrome-extension://${extId}/src/options/options.html`)
   await optionsPage.waitForLoadState('domcontentloaded')
   await optionsPage.waitForTimeout(500) // let Angular render
 

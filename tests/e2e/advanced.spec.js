@@ -163,7 +163,7 @@ async function clearDB() {
  */
 async function exportDB(extId) {
   const optionsPage = await context.newPage()
-  await optionsPage.goto(`chrome-extension://${extId}/options.html`)
+  await optionsPage.goto(`chrome-extension://${extId}/src/options/options.html`)
   await optionsPage.waitForLoadState('domcontentloaded')
   await optionsPage.click('a[href="#advanced"]')
 
@@ -221,7 +221,7 @@ test('import restores highlights from a backup file', async () => {
 
   try {
     const optionsPage = await context.newPage()
-    await optionsPage.goto(`chrome-extension://${extId}/options.html`)
+    await optionsPage.goto(`chrome-extension://${extId}/src/options/options.html`)
     await optionsPage.waitForLoadState('domcontentloaded')
     await optionsPage.click('a[href="#advanced"]')
 
@@ -272,7 +272,7 @@ test('merge combines same-page backups and skips duplicates', async () => {
     await createHighlightsOnPage(pageUrl, [PAGE_1_TEXT_A, PAGE_1_TEXT_C])
 
     const optionsPage = await context.newPage()
-    await optionsPage.goto(`chrome-extension://${extId}/options.html`)
+    await optionsPage.goto(`chrome-extension://${extId}/src/options/options.html`)
     await optionsPage.waitForLoadState('domcontentloaded')
     await optionsPage.click('a[href="#advanced"]')
 
@@ -327,7 +327,7 @@ test('merge adds new highlights from another page and skips duplicates', async (
     // page-2's highlight is new → gets added; page-1's highlight is a duplicate → skipped
     // Expected result: 2 pages visible
     let optionsPage = await context.newPage()
-    await optionsPage.goto(`chrome-extension://${extId}/options.html`)
+    await optionsPage.goto(`chrome-extension://${extId}/src/options/options.html`)
     await optionsPage.waitForLoadState('domcontentloaded')
     await optionsPage.click('a[href="#advanced"]')
 
@@ -344,7 +344,7 @@ test('merge adds new highlights from another page and skips duplicates', async (
     // page-1's highlight is already present → nothing added
     // Expected result: still 2 pages (duplicate skipped)
     optionsPage = await context.newPage()
-    await optionsPage.goto(`chrome-extension://${extId}/options.html`)
+    await optionsPage.goto(`chrome-extension://${extId}/src/options/options.html`)
     await optionsPage.waitForLoadState('domcontentloaded')
     await optionsPage.click('a[href="#advanced"]')
 

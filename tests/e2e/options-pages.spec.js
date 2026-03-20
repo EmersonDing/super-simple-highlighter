@@ -1,5 +1,5 @@
 // @ts-check
-// Tests for the Pages (bookmarks) tab in options.html.
+// Tests for the Pages (bookmarks) tab in src/options/options.html.
 // Verifies that highlights created via the extension appear in the Pages tab
 // with the correct page entry and, when text display is toggled on, the
 // highlight text itself.
@@ -91,7 +91,7 @@ test('pages tab shows page entry and highlight text after a highlight is created
   // Open the options page and navigate to the Pages (bookmarks) tab
   const extId = sw.url().split('/')[2]
   const optionsPage = await context.newPage()
-  await optionsPage.goto(`chrome-extension://${extId}/options.html`)
+  await optionsPage.goto(`chrome-extension://${extId}/src/options/options.html`)
   await optionsPage.waitForLoadState('domcontentloaded')
 
   // The bookmarks controller defers init until the tab is shown —
@@ -125,7 +125,7 @@ test('styles tab AI panel allows choosing the toolbar AI target', async () => {
   })
 
   const optionsPage = await context.newPage()
-  await optionsPage.goto(`chrome-extension://${extId}/options.html`)
+  await optionsPage.goto(`chrome-extension://${extId}/src/options/options.html`)
   await optionsPage.waitForLoadState('domcontentloaded')
   await optionsPage.waitForTimeout(500)
 

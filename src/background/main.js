@@ -16,9 +16,9 @@
  */
 
 importScripts(
-  "../../static/js/pouchdb-6.4.3.min.js",
-  "../../static/js/pouchdb.replication-stream.min.js",
-  "../../static/js/pouchdb.load.min.js",
+  "../vendor/js/pouchdb-6.4.3.min.js",
+  "../vendor/js/pouchdb.replication-stream.min.js",
+  "../vendor/js/pouchdb.load.min.js",
   "../shared/db.js",
   "../shared/highlighter.js",
   "../shared/chrome_tabs.js",

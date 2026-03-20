@@ -20,6 +20,7 @@ Super Simple Highlighter is a Chrome extension for saving text highlights on web
 - **Storage**: highlight documents are stored in PouchDB/IndexedDB with create and delete history, plus optional comment metadata.
 - **Execution model**: the extension runs on Manifest V3 with a service worker background and uses runtime messages between the page and extension layers.
 - **Toolbar behavior**: selection UI lives in the content script, while tab creation and highlight persistence are routed through the background worker.
+- **Project layout**: extension entrypoints and runtime code are grouped by execution surface under `src/`, while icons and other static resources live under `assets/`.
 
 ## Key Design Constraints
 

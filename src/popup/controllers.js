@@ -678,7 +678,7 @@ controllerModule.controller('popupController', ["$scope", function ($scope) {
 				}
 
 				// get the full uri for the tab. the summary page will get the match for it
-				const u = new URL("http://example.com/overview.html")
+				const u = new URL("http://example.com/src/overview/overview.html")
 				const m = new Map([
 					['tabId', tab.id.toString()],
 					['sortby', this.scope.sort.value],

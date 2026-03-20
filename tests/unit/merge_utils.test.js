@@ -1,4 +1,4 @@
-const { mergeHighlightDocs } = require('../../js/options/merge_utils')
+const { mergeHighlightDocs } = require('../../src/options/merge_utils')
 
 function makeDoc(match, text, range, extra = {}) {
   return { verb: 'create', match, text, range, ...extra }

@@ -127,8 +127,8 @@ class ChromeWebNavigationHandler {
 
           return pageAction.setIcon({
             path: {
-                19: "static/images/popup/19_warning.png",
-                38: "static/images/popup/38_warning.png",
+                19: "assets/images/popup/19_warning.png",
+                38: "assets/images/popup/38_warning.png",
             }
           })            
         }

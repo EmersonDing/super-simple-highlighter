@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generates static/images/*.png — the extension icon at all required sizes.
+ * Generates assets/icons/*.png — the extension icon at all required sizes.
  * Run: npm run generate:icons
  *
  * Source icon: highlight marker (diagonal stroke + square tip), charcoal #3a3a3c
@@ -13,7 +13,7 @@ const { Resvg } = require('@resvg/resvg-js')
 const fs = require('fs')
 const path = require('path')
 
-const OUT_DIR = path.join(__dirname, '..', 'static', 'images')
+const OUT_DIR = path.join(__dirname, '..', 'assets', 'icons')
 
 const SIZES = [16, 19, 32, 38, 48, 64, 96, 128, 256]
 

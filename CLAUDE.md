@@ -11,10 +11,21 @@ Chrome extension (Manifest V3) that lets users highlight text on web pages. High
 
 ## Architecture
 
-- **Service worker** (`js/background/main.js`): Loads all shared/background modules via `importScripts()`. Handles context menus, commands, storage, and web navigation events.
-- **Content scripts** (`js/content_script/`): Injected on demand via ping-then-inject pattern in `chrome_tabs.js`. Create/remove `<mark>` elements in the page DOM.
-- **Shared modules** (`js/shared/`): Database (`db.js` using PouchDB), highlight coordination (`highlighter.js`), Chrome API wrappers.
-- **UI**: Popup (`popup.html`), options page (`options.html`), floating selection toolbar (`js/content_script/selection_toolbar.js`).
+- **Tech stack**: Chrome Extension Manifest V3, plain JavaScript, AngularJS, Bootstrap, PouchDB/IndexedDB, Jest, and Playwright.
+- **Background runtime** (`src/background/`): The service worker is the privileged control plane for the extension. It owns Chrome API integrations such as context menus, commands, tab actions, storage coordination, and web-navigation-triggered highlight restoration.
+- **Page runtime** (`src/content/`): Content scripts are the in-page execution layer. They translate saved highlight documents into `<mark>` elements, observe user interactions in the DOM, and host the floating selection toolbar UI that appears directly on web pages.
+- **Shared core** (`src/shared/`): Shared modules hold the extension's domain logic and cross-context helpers, including persistence, highlight creation/removal flows, style management, and Chrome wrapper utilities used by multiple runtimes.
+- **Extension pages** (`src/popup/`, `src/options/`, `src/overview/`): These are the user-facing management surfaces. The popup handles quick highlight actions for the active tab, the options page manages styles/settings/backups, and the overview page renders exported or browsable highlight summaries.
+- **Bundled browser dependencies** (`src/vendor/`): Third-party JS and CSS are kept separate from extension-owned logic because they are loaded directly at runtime without a bundling step.
+- **Static assets** (`assets/`): Icons, warning images, and fonts used by the manifest and UI surfaces live outside runtime code so entrypoints can reference them predictably.
+
+## Path Rules
+
+- Keep `manifest.json` at the repository root.
+- New extension-owned runtime code should go under the matching `src/<context>/` folder, not under root-level `js/`, `css/`, or `static/` directories.
+- New third-party browser libraries belong under `src/vendor/`.
+- New icons, images, and fonts belong under `assets/`.
+- Because the extension is loaded unpacked without a bundler, every moved file must have its relative `<script>`, `<link>`, `importScripts()`, and string-based runtime paths updated together.
 
 ## Key patterns
 

@@ -695,20 +695,20 @@ ChromeTabs.OVERVIEW_FORMAT = {
 }
 
 ChromeTabs.DEFAULT_SCRIPTS = [
-  "js/shared/chrome_tabs.js", // just for static properties
+  "src/shared/chrome_tabs.js", // just for static properties
 
-  "js/shared/chrome_storage.js", 
-  "js/shared/chrome_highlight_storage.js",
+  "src/shared/chrome_storage.js", 
+  "src/shared/chrome_highlight_storage.js",
   
-  "js/shared/utils.js",
-  "js/shared/style_sheet_manager.js",
+  "src/shared/utils.js",
+  "src/shared/style_sheet_manager.js",
 
-  "js/content_script/marker.js",
-  "js/content_script/dom_events_handler.js",
-  "js/content_script/chrome_storage_handler.js",
-  "js/content_script/chrome_runtime_handler.js",
-  "js/content_script/selection_toolbar.js",
-  "js/content_script/main.js",
+  "src/content/marker.js",
+  "src/content/dom_events_handler.js",
+  "src/content/chrome_storage_handler.js",
+  "src/content/chrome_runtime_handler.js",
+  "src/content/selection_toolbar.js",
+  "src/content/main.js",
 ]
 
 ChromeTabs.MESSAGE_ID = {

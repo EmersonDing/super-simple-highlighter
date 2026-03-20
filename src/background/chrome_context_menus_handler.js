@@ -213,7 +213,7 @@ class ChromeContextMenusHandler {
       case ChromeContextMenusHandler.ID.PAGE_ACTION.OPEN_BOOKMARKS:
         return ChromeTabs.create({ 
           openerTabId: tab.id,
-          url: 'options.html#bookmarks'
+          url: 'src/options/options.html#bookmarks'
         })
     
       default:

@@ -59,7 +59,7 @@ test.afterAll(async () => {
 test('options page advanced tab displays database storage size', async () => {
   // Get extension ID from service worker URL
   const extId = sw.url().split('/')[2]
-  const optionsUrl = `chrome-extension://${extId}/options.html`
+  const optionsUrl = `chrome-extension://${extId}/src/options/options.html`
 
   const page = await context.newPage()
   await page.goto(optionsUrl)
@@ -82,7 +82,7 @@ test('options page advanced tab displays database storage size', async () => {
 // Verifies export, import, and merge controls use the same visible button styling in the Advanced tab.
 test('options page advanced tab backup controls share button styling', async () => {
   const extId = sw.url().split('/')[2]
-  const optionsUrl = `chrome-extension://${extId}/options.html`
+  const optionsUrl = `chrome-extension://${extId}/src/options/options.html`
 
   const page = await context.newPage()
   await page.goto(optionsUrl)
