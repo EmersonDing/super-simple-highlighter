@@ -651,8 +651,16 @@ class ChromeTabs {
             let markdown = `# [${tab.title}](${tab.url})`
             let currentClassName
 
+            const appendMarkdownComment = (value, comment) => {
+                if (!comment) {
+                    return value
+                }
+
+                return `${value}\n  > ${comment}`
+            }
+
             // iterate each highlight
-            for (const {className, text} of docs) {
+            for (const {className, text, comment} of docs) {
                 // only add a new heading when the class of the header changes
                 if (className != currentClassName) {
                     markdown += `\n\n## ${titles.get(className)}`
@@ -665,6 +673,7 @@ class ChromeTabs {
 
                 // each highlight is an unordered list item
                 markdown += `\n* ${text}`
+                markdown = appendMarkdownComment(markdown, comment)
             }
 
             // footer

@@ -15,6 +15,14 @@
  * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+function appendMarkdownComment(markdown, comment) {
+  if (!comment) {
+    return markdown
+  }
+
+  return `${markdown}\n  > ${comment}`
+}
+
 // 'bookmarksControllers' module containing a single controller, named 'bookmarks'
 angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", function ($scope) {
   class Controller {
@@ -536,10 +544,7 @@ angular.module('bookmarksControllers', []).controller('bookmarks', ["$scope", fu
           }
 
           markdown += `\n- ${textItem.text || ''}`
-
-          if (textItem.comment) {
-            markdown += `\n  - Note: ${textItem.comment}`
-          }
+          markdown = appendMarkdownComment(markdown, textItem.comment)
         }
       }
 
