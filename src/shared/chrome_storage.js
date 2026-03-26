@@ -128,6 +128,9 @@ ChromeStorage.KEYS = {
   POPUP_HIGHLIGHT_TEXT_MAX_LENGTH: 'popupHighlightTextMaxLength',
   ENABLE_TOOLBAR_COLOR_SELECTION: 'enableToolbarColorSelection',
   AI_PROVIDER: 'aiProvider',
+  CHAT_PROVIDER: 'chatProvider',
+  CHAT_API_KEY_GPT: 'chatApiKeyGpt',
+  CHAT_API_KEY_GEMINI: 'chatApiKeyGemini',
 
   HIGHLIGHT: {
     SORT_BY: 'highlight_sort_by',
@@ -159,6 +162,9 @@ ChromeStorage.DEFAULTS = {
   [ChromeStorage.KEYS.POPUP_HIGHLIGHT_TEXT_MAX_LENGTH]: 512,
   [ChromeStorage.KEYS.ENABLE_TOOLBAR_COLOR_SELECTION]: true,
   [ChromeStorage.KEYS.AI_PROVIDER]: 'gemini',
+  [ChromeStorage.KEYS.CHAT_PROVIDER]: 'gemini',
+  [ChromeStorage.KEYS.CHAT_API_KEY_GPT]: '',
+  [ChromeStorage.KEYS.CHAT_API_KEY_GEMINI]: '',
 
   [ChromeStorage.KEYS.HIGHLIGHT.SORT_BY]: 'time',
   [ChromeStorage.KEYS.HIGHLIGHT.INVERT_SORT]: false,
