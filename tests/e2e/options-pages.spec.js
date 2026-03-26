@@ -118,10 +118,10 @@ test('pages tab shows page entry and highlight text after a highlight is created
 })
 
 
-test('styles tab AI panel allows choosing the toolbar AI target', async () => {
+test('styles tab AI Chat panel shows provider and API key fields, saves to local storage', async () => {
   const extId = sw.url().split('/')[2]
   await sw.evaluate(async () => {
-    await chrome.storage.sync.set({ aiProvider: 'gemini' })
+    await chrome.storage.local.set({ chatProvider: 'gemini', chatApiKeyGpt: '', chatApiKeyGemini: '' })
   })
 
   const optionsPage = await context.newPage()
@@ -129,23 +129,29 @@ test('styles tab AI panel allows choosing the toolbar AI target', async () => {
   await optionsPage.waitForLoadState('domcontentloaded')
   await optionsPage.waitForTimeout(500)
 
-  const aiSelect = optionsPage.locator('select[ng-model="options.aiProvider"]')
-  await expect(aiSelect).toBeVisible()
-  await expect(aiSelect).toHaveValue('gemini')
+  const chatProviderSelect = optionsPage.locator('select[ng-model="chatOptions.chatProvider"]')
+  await expect(chatProviderSelect).toBeVisible()
+  await expect(chatProviderSelect).toHaveValue('gemini')
 
-  await aiSelect.selectOption('claude')
-  await expect(aiSelect).toHaveValue('claude')
+  await chatProviderSelect.selectOption('gpt')
+  await expect(chatProviderSelect).toHaveValue('gpt')
 
   await expect.poll(async () => {
     return await sw.evaluate(async () => {
-      const items = await chrome.storage.sync.get(['aiProvider'])
-      return items.aiProvider
+      const items = await chrome.storage.local.get(['chatProvider'])
+      return items.chatProvider
     })
-  }).toBe('claude')
+  }).toBe('gpt')
+
+  const gptKeyInput = optionsPage.locator('input[ng-model="chatOptions.chatApiKeyGpt"]')
+  await expect(gptKeyInput).toBeVisible()
+
+  const geminiKeyInput = optionsPage.locator('input[ng-model="chatOptions.chatApiKeyGemini"]')
+  await expect(geminiKeyInput).toBeVisible()
 
   await optionsPage.close()
 
   await sw.evaluate(async () => {
-    await chrome.storage.sync.set({ aiProvider: 'gemini' })
+    await chrome.storage.local.remove(['chatProvider', 'chatApiKeyGpt', 'chatApiKeyGemini'])
   })
 })

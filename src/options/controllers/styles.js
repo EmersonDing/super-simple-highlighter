@@ -77,6 +77,10 @@ angular.module('stylesControllers', []).controller('styles', ["$scope", function
 				this.scope[func.name] = func.bind(this)
       }
 
+      this.scope.onChangeChatOption = () => {
+        new ChromeStorage('local').set(this.scope.chatOptions)
+      }
+
       // update storage when scoped options object changes
       this.scope.$watchCollection('options', this.onOptionsCollectionChanged.bind(this))
       this.scope.$watchCollection('highlightDefinitions', this.onHighlightDefinitionsCollectionChanged.bind(this))
@@ -89,6 +93,25 @@ angular.module('stylesControllers', []).controller('styles', ["$scope", function
      * @memberof Controller
      */
     init() {
+      // Load chat options from local storage (not sync — API keys stay local)
+      new ChromeStorage('local').get([
+        ChromeStorage.KEYS.CHAT_PROVIDER,
+        ChromeStorage.KEYS.CHAT_API_KEY_GPT,
+        ChromeStorage.KEYS.CHAT_API_KEY_GEMINI,
+      ]).then(chatItems => {
+        this.scope.$applyAsync(() => {
+          this.scope.chatOptions = chatItems
+        })
+      }).catch(() => {
+        this.scope.$applyAsync(() => {
+          this.scope.chatOptions = {
+            [ChromeStorage.KEYS.CHAT_PROVIDER]: 'gemini',
+            [ChromeStorage.KEYS.CHAT_API_KEY_GPT]: '',
+            [ChromeStorage.KEYS.CHAT_API_KEY_GEMINI]: '',
+          }
+        })
+      })
+
       // copy all shortcut command info into scoped object
       return new Promise(resolve => {
         chrome.commands.getAll(commands => resolve(commands))
@@ -101,7 +124,6 @@ angular.module('stylesControllers', []).controller('styles', ["$scope", function
             ChromeStorage.KEYS.ENABLE_HIGHLIGHT_BOX_SHADOW,
             ChromeStorage.KEYS.HIGHLIGHT_BACKGROUND_ALPHA,
             ChromeStorage.KEYS.ENABLE_TOOLBAR_COLOR_SELECTION,
-            ChromeStorage.KEYS.AI_PROVIDER,
         ])
       }).then(items => {
         this.scope.options = items

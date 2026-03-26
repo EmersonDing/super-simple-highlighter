@@ -224,21 +224,51 @@
 					</div>
 
 
-					<!-- Panel: AI -->
+					<!-- Panel: AI Chat -->
 					<div class="panel panel-default">
-						<div class="panel-heading">AI</div>
+						<div class="panel-heading">AI Chat</div>
 						<div class="panel-body">
-							<div class="form-group" style="margin-bottom:0;">
-								<label class="control-label" style="font-weight:normal;">AI search target:
+							<div class="form-group">
+								<label class="control-label" style="font-weight:normal;">Chat provider:
 									<select class="form-control input-sm" style="display:inline-block; width:auto; margin-left:8px;"
-										ng-model="options.aiProvider">
+										ng-model="chatOptions.chatProvider"
+										ng-change="onChangeChatOption()">
 										<option value="gemini">Gemini</option>
 										<option value="gpt">ChatGPT</option>
-										<option value="claude">Claude</option>
 									</select>
 								</label>
 							</div>
-							<div class="help-block" style="margin-bottom:0; margin-top:8px;">Controls the new AI button in the floating selection toolbar.</div>
+							<div class="form-group">
+								<label class="control-label" style="font-weight:normal;">OpenAI API Key:</label>
+								<div class="input-group" style="max-width:400px;">
+									<input class="form-control input-sm" type="{{showGptKey ? 'text' : 'password'}}"
+										ng-model="chatOptions.chatApiKeyGpt"
+										ng-change="onChangeChatOption()"
+										placeholder="sk-...">
+									<span class="input-group-btn">
+										<button class="btn btn-default btn-sm" type="button"
+											ng-click="showGptKey = !showGptKey">
+											{{showGptKey ? 'Hide' : 'Show'}}
+										</button>
+									</span>
+								</div>
+							</div>
+							<div class="form-group" style="margin-bottom:0;">
+								<label class="control-label" style="font-weight:normal;">Gemini API Key:</label>
+								<div class="input-group" style="max-width:400px;">
+									<input class="form-control input-sm" type="{{showGeminiKey ? 'text' : 'password'}}"
+										ng-model="chatOptions.chatApiKeyGemini"
+										ng-change="onChangeChatOption()"
+										placeholder="AIza...">
+									<span class="input-group-btn">
+										<button class="btn btn-default btn-sm" type="button"
+											ng-click="showGeminiKey = !showGeminiKey">
+											{{showGeminiKey ? 'Hide' : 'Show'}}
+										</button>
+									</span>
+								</div>
+							</div>
+							<div class="help-block" style="margin-bottom:0; margin-top:8px;">API keys are stored locally and never synced across devices.</div>
 						</div>
 					</div>
 
