@@ -220,77 +220,32 @@ test('toolbar includes AI button as the fourth action', async () => {
   await page.close()
 })
 
-test('clicking AI button opens Google AI mode by default and dismisses toolbar', async () => {
+test('clicking AI button opens chat panel and dismisses toolbar', async () => {
   const { page } = await setupPage()
-  await sw.evaluate(() => {
-    self.__testOriginalChromeTabsCreate = ChromeTabs.create
-    self.__testOpenedUrls = []
-    ChromeTabs.create = (properties) => {
-      self.__testOpenedUrls.push(properties.url)
-      return Promise.resolve({ id: 999, url: properties.url })
-    }
-  })
 
-  await selectText(page)
-  await page.waitForSelector('.ssh-toolbar-root', { timeout: 3000 })
-
-  await page.click('.ssh-toolbar-ai')
-
-  await expect.poll(async () => {
-    return await sw.evaluate(() => self.__testOpenedUrls[0] || null)
-  }).not.toBeNull()
-  const aiUrl = new URL(await sw.evaluate(() => self.__testOpenedUrls[0]))
-  expect(`${aiUrl.origin}${aiUrl.pathname}`).toBe('https://www.google.com/search')
-  expect(aiUrl.searchParams.get('q')).toBe('This is a test sentence')
-  expect(aiUrl.searchParams.get('udm')).toBe('50')
-
-  const toolbar = await page.$('.ssh-toolbar-root')
-  expect(toolbar).toBeNull()
-
-  await sw.evaluate(() => {
-    ChromeTabs.create = self.__testOriginalChromeTabsCreate
-    delete self.__testOriginalChromeTabsCreate
-    delete self.__testOpenedUrls
-  })
-  await page.close()
-})
-
-test('toolbar honors stored AI provider before the first render', async () => {
-  await sw.evaluate(async () => {
-    await chrome.storage.sync.set({ aiProvider: 'claude' })
-    self.__testOriginalChromeTabsCreate = ChromeTabs.create
-    self.__testOpenedUrls = []
-    ChromeTabs.create = (properties) => {
-      self.__testOpenedUrls.push(properties.url)
-      return Promise.resolve({ id: 999, url: properties.url })
-    }
-  })
-
-  const { page } = await setupPage()
   await selectText(page)
   await page.waitForSelector('.ssh-toolbar-root', { timeout: 3000 })
 
   const aiTitle = await page.getAttribute('.ssh-toolbar-ai', 'title')
-  expect(aiTitle).toBe('Search Claude AI')
+  expect(aiTitle).toBe('Chat with AI')
 
   await page.click('.ssh-toolbar-ai')
+  await page.waitForTimeout(300)
 
-  await expect.poll(async () => {
-    return await sw.evaluate(() => self.__testOpenedUrls[0] || null)
-  }).not.toBeNull()
+  // Chat panel should open
+  const panel = page.locator('.ssh-chat-panel')
+  await expect(panel).toBeVisible()
 
-  const aiUrl = new URL(await sw.evaluate(() => self.__testOpenedUrls[0]))
-  expect(`${aiUrl.origin}${aiUrl.pathname}`).toBe('https://claude.ai/new')
-  expect(aiUrl.searchParams.get('q')).toBe('This is a test sentence')
+  // Toolbar should be dismissed
+  const toolbar = await page.$('.ssh-toolbar-root')
+  expect(toolbar).toBeNull()
+
+  // Context badge should show selected text
+  const badge = page.locator('.ssh-chat-context-badge')
+  const badgeText = await badge.textContent()
+  expect(badgeText).toContain('Selected:')
 
   await page.close()
-
-  await sw.evaluate(async () => {
-    ChromeTabs.create = self.__testOriginalChromeTabsCreate
-    delete self.__testOriginalChromeTabsCreate
-    delete self.__testOpenedUrls
-    await chrome.storage.sync.set({ aiProvider: 'gemini' })
-  })
 })
 
 test('clicking pen button creates a highlight and dismisses toolbar', async () => {
