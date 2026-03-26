@@ -36,6 +36,7 @@ importScripts(
 // listeners
 
 ChromeRuntimeHandler.addListeners()
+ChromeRuntimeHandler.addConnectListener()
 ChromeStorageHandler.addListeners()
 ChromeCommandsHandler.addListeners()
 ChromeWebNavigationHandler.addListeners()

@@ -32,6 +32,168 @@ class ChromeRuntimeHandler {
     chrome.runtime.onMessage.addListener(ChromeRuntimeHandler.onMessage)
   }
 
+  static addConnectListener() {
+    chrome.runtime.onConnect.addListener(ChromeRuntimeHandler.onConnect)
+  }
+
+  static onConnect(port) {
+    if (port.name !== 'chat-stream') return
+
+    port.onMessage.addListener(async (request) => {
+      try {
+        const storage = new ChromeStorage('local')
+        const keys = await new Promise((resolve, reject) => {
+          storage.storage.get({
+            [ChromeStorage.KEYS.CHAT_PROVIDER]: 'gemini',
+            [ChromeStorage.KEYS.CHAT_API_KEY_GPT]: '',
+            [ChromeStorage.KEYS.CHAT_API_KEY_GEMINI]: '',
+          }, (items) => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError)
+            else resolve(items)
+          })
+        })
+
+        const provider = request.provider || keys[ChromeStorage.KEYS.CHAT_PROVIDER]
+        const apiKey = provider === 'gpt'
+          ? keys[ChromeStorage.KEYS.CHAT_API_KEY_GPT]
+          : keys[ChromeStorage.KEYS.CHAT_API_KEY_GEMINI]
+
+        if (!apiKey) {
+          port.postMessage({ type: 'error', message: `No API key configured for ${provider === 'gpt' ? 'OpenAI' : 'Gemini'}. Set it in Settings > AI Chat.` })
+          return
+        }
+
+        let systemContent = 'You are a helpful assistant. The user is reading a web page. Here is the page content:\n\n'
+        const pageCtx = (request.pageContext || '').substring(0, 50000)
+        systemContent += pageCtx
+
+        if (request.selectedText) {
+          systemContent += '\n\nThe user has highlighted this text:\n\n' + request.selectedText
+        }
+
+        if (provider === 'gpt') {
+          await ChromeRuntimeHandler._streamGPT(port, apiKey, systemContent, request.messages)
+        } else {
+          await ChromeRuntimeHandler._streamGemini(port, apiKey, systemContent, request.messages)
+        }
+      } catch (e) {
+        try {
+          port.postMessage({ type: 'error', message: e.message || 'Unknown error' })
+        } catch (_) { /* port disconnected */ }
+      }
+    })
+  }
+
+  static async _streamGPT(port, apiKey, systemContent, messages) {
+    const apiMessages = [
+      { role: 'system', content: systemContent },
+      ...messages,
+    ]
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: apiMessages,
+        stream: true,
+      }),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => response.statusText)
+      port.postMessage({ type: 'error', message: `OpenAI API error (${response.status}): ${errText}` })
+      return
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data: ')) continue
+        const data = trimmed.slice(6)
+        if (data === '[DONE]') break
+
+        try {
+          const parsed = JSON.parse(data)
+          const delta = parsed.choices?.[0]?.delta?.content
+          if (delta) {
+            port.postMessage({ type: 'chunk', text: delta })
+          }
+        } catch (_) { /* skip malformed JSON */ }
+      }
+    }
+
+    port.postMessage({ type: 'done' })
+  }
+
+  static async _streamGemini(port, apiKey, systemContent, messages) {
+    const contents = messages.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }))
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemContent }] },
+          contents: contents,
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => response.statusText)
+      port.postMessage({ type: 'error', message: `Gemini API error (${response.status}): ${errText}` })
+      return
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data: ')) continue
+        const data = trimmed.slice(6)
+
+        try {
+          const parsed = JSON.parse(data)
+          const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text
+          if (text) {
+            port.postMessage({ type: 'chunk', text: text })
+          }
+        } catch (_) { /* skip malformed JSON */ }
+      }
+    }
+
+    port.postMessage({ type: 'done' })
+  }
+
   /**
    * Fired when a profile that has this extension installed first starts up.
    * This event is not fired when an incognito profile is started, even if this
